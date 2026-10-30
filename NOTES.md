@@ -105,6 +105,18 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | 2026-10-30 | D-044 | Generic `aggregate_metrics` tool over trusted evidence references (time-boxed, deferrable) | 3 (close) | APPROVED (direction) | close #15 |
 | 2026-10-30 | P-030 | Detailed design of `aggregate_metrics` (evidence store, allowed operations, validation) | 3 (close) | PROPOSED | close #15 |
 | 2026-10-30 | — | Reaffirmed: configurable model with verification in the Phase 4 smoke test (D-033), minimal labelled no-key demo (D-032), 24 h plan with 3 h contingency (D-031), no datasets in Git before checks (D-037) | 3 (close) | APPROVED (reaffirmations) | close #9, #11, #12, #13 |
+| 2026-10-30 | — | Phase 3 approved and committed by the user (`3f29efd`); Phase 4 approved to start | 3→4 | APPROVED | |
+| 2026-10-30 | — | The user re-added `NOTES.md` to `.gitignore` (line 22) after the Phase 3 commit. The file **remains tracked** (`git ls-files` lists it), so edits still show as modified. Treated as a deliberate user choice; not reverted. | 4 | Observed | |
+| 2026-10-30 | P-031 | Use the built-in `ToolErrorMiddleware` (+ ToolNode arg validation) instead of a custom `@wrap_tool_call` | 4 | PROPOSED (implemented in working tree, tests pass) | |
+| 2026-10-30 | P-032 | Loop limit via `ModelCallLimitMiddleware(run_limit)` instead of `recursion_limit` | 4 | PROPOSED (implemented, tests pass) | |
+| 2026-10-30 | P-033 | Test-model strategy: `GenericFakeChatModel` subclass with a no-op `bind_tools` | 4 | PROPOSED (implemented, tests pass) | |
+| 2026-10-30 | P-034 | Tooling: `venv` + pinned `requirements.txt`; settings via env + python-dotenv; pytest markers `live` / `llm` | 4 | PROPOSED (implemented) | |
+| 2026-10-30 | P-035 | Keep the create-vite template defaults (TypeScript 7, oxlint); remove template demo assets | 4 | PROPOSED (implemented) | |
+| 2026-10-30 | P-036 | Non-aviation smoke tool (`lookup_test_value`) for the integration tests | 4 | PROPOSED (implemented) | |
+| 2026-10-30 | — | Phase 4 foundation and offline smoke tests approved by the user | 4 | APPROVED | |
+| 2026-10-30 | D-045 | `NOTES.md` must not be gitignored: it is an essential tracked journal (rule removed) | 4 (cleanup) | APPROVED; `.gitignore` edited, commit pending with the user | |
+| 2026-10-30 | P-037 | `llm_configured` checks `ANTHROPIC_API_KEY` only (`ANTHROPIC_AUTH_TOKEN` is not read by langchain-anthropic) | 4 (cleanup) | PROPOSED (implemented, tests pass) | |
+| 2026-10-30 | — | Real-model smoke tests run after the key was added: **FAIL with HTTP 400 "credit balance too low"** (account-level). Model ID verified available via the Models API. No model switch (P-028 not triggered). | 4 (verification) | Observed | |
 
 ---
 
@@ -896,6 +908,154 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 
 ---
 
+## 3b. Phase 4: Project Foundation (2026-10-30), implementation journal
+
+> These are implementation choices made **within** the approved design (D-022 to D-044). They are labelled PROPOSED until the user reviews them. Results below come from commands actually run on 2026-10-30. Nothing is claimed beyond that evidence.
+
+### Environment observed
+- Node v20.20.1 (satisfies Vite 8's `^20.19.0 || >=22.12.0`), npm 10.8.2, Python 3.13.7 (Windows).
+- **No `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`** in the environment. No `.env`. The `ant` CLI is not installed, so there is no stored profile either.
+- Consequence: the real-model smoke tests are **BLOCKED**. They are written and auto-skip until a key is configured.
+
+### Smoke-test results (A-018 to A-022, D-033, D-035)
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1 | Model ID and API compatibility (real call) | **BLOCKED** (no key) | `pytest -m llm` → 2 skipped, "ANTHROPIC_API_KEY not configured". **Offline only:** `ChatAnthropic._get_request_payload` produces `model: claude-opus-5-5`, `max_tokens: 16000`, `output_config: {effort: medium}`, `thinking: {type: adaptive, display: summarized}`, no `temperature`, no forced `tool_choice`, and the tool's Pydantic schema as `input_schema`. This shows request construction, **not** model availability (D-033). |
+| 2 | Tool invocation | **PASS** (fake model) | `test_tool_invocation_and_artifact_propagation` |
+| 3 | Artifact propagation (A-022) | **PASS** (fake model) | The artifact is present on the returned `ToolMessage`. `extract_turn` returns it as evidence with the tool input matched by `tool_call_id`. `test_artifact_is_not_sent_to_model_content`: the `ToolMessage.content` holds only the summary. **Contextvars fallback not needed.** |
+| 4 | Session memory and follow-ups (A-019 memory part) | **PASS** (fake model); real-model thinking round-trip **BLOCKED** | `test_session_memory_and_second_turn_evidence_isolation`: turn 2 on the same `thread_id` contains the turn-1 artifact in its state, and evidence contains only turn 2. `test_separate_threads_do_not_share_memory`. |
+| 5 | Invalid tool input (A-018) | **PASS** (fake model) | `test_invalid_tool_input_becomes_error_tool_message`: a Pydantic pattern violation → `ToolMessage(status="error")`, no artifact, and the agent continues to a final reply. Execution errors: `test_tool_execution_error_is_returned_to_model` (`ToolErrorMiddleware` returns `TOOL_ERROR` with the exception **type** only). |
+| 6 | Iteration limit (A-020) | **PASS** (fake model) | `test_model_call_limit_stops_a_looping_agent`: a model that always calls tools is stopped after exactly 3 model calls (`run_limit=3`). |
+| 7 | Test-model strategy (A-021) | **PASS** | `GenericFakeChatModel` exists but **does not implement `bind_tools`** (checked with `inspect`). A 3-line subclass `ToolCallingFakeModel` works with `create_agent`. |
+| 8 | Live BTS API connectivity | **PASS** | `pytest -m live` → 1 passed. `/api/health` → `{"reachable": true, "status_code": 200, "latest_month": "2026-07", "source_type": "public_api", ...}` |
+| 9 | Frontend build and lint | **PASS** | `npm run lint` (oxlint, no findings). `npm run build` (`tsc -b` + `vite build`; 17 modules, 220.57 kB JS). |
+| 10 | Single-server serving (D-034) | **PASS** | `uvicorn app.main:app` → `GET /` 200 text/html (title "Airport Investment Agent"). `GET /api/health` 200. |
+| 11 | Vite dev proxy (D-034) | **PASS** | `vite --port 5173` → `GET http://localhost:5173/api/health` 200 with the backend JSON. |
+| — | Offline pytest suite | **PASS** | `pytest` → 9 passed, 3 deselected (live/llm). |
+
+### Problems encountered and resolutions
+- **`ToolErrorMiddleware(on_error=...)` signature.** The first run failed: `TypeError: _tool_error_content() takes 1 positional argument but 2 were given`. The installed version calls `on_error(exc, request)`. Fixed the handler signature, and the re-run passed. Lesson: verify middleware callbacks against the installed source, not the summary docs.
+- **The fake model lacks `bind_tools`** → see P-033.
+- **A leftover Vite process** kept listening on 5173 after the proxy test. It was stopped with `Stop-Process`, and ports 8000 and 5173 were confirmed free.
+
+### P-031: Built-in `ToolErrorMiddleware` instead of a custom `@wrap_tool_call`
+- **Context:** D-042 approved "`@wrap_tool_call` error middleware". The installed `langchain` 1.4.7 ships `ToolErrorMiddleware`. Its docstring says argument-binding and validation errors are already converted to error `ToolMessage`s upstream by `ToolNode`.
+- **Alternatives:**
+  - *[discussed in Phase 3]* A custom `@wrap_tool_call`. Pro: full control. Con: re-implements a shipped feature.
+  - *[selected]* `ToolErrorMiddleware(on_error=...)`, returning only the exception **type** (not the message) to avoid leaking internals.
+- **Tradeoff:** less control over the shape. The content is a small JSON string. Structured `error` evidence artifacts for React come in Phase 7.
+- **Validation:** tests 5 and the execution-error test (above).
+- **Impact:** less code.
+- **Interview line:** "I checked what the framework already did for tool errors and used it, instead of wrapping it myself."
+
+### P-032: `ModelCallLimitMiddleware` instead of `recursion_limit`
+- **Context:** the design said `recursion_limit` (A-020). The installed package provides `ModelCallLimitMiddleware(run_limit, exit_behavior="end")`.
+- **Alternatives:**
+  - *[discussed]* `recursion_limit` in the run config. Con: it counts graph steps, not model calls, and raises an error when hit.
+  - *[selected]* `ModelCallLimitMiddleware(run_limit=AGENT_MAX_MODEL_CALLS (8), exit_behavior="end")`. It is per run, so a long conversation does not exhaust it.
+- **Validation:** test 6 (exactly 3 calls at `run_limit=3`).
+- **Remaining:** the user-facing "analysis incomplete" message when the limit ends a run comes in Phase 7.
+- **Interview line:** "I bounded cost by counting model calls per request, which is the thing that actually costs money."
+
+### P-033: Test-model strategy
+- `ToolCallingFakeModel(GenericFakeChatModel)` with `bind_tools` returning `self`, plus scripted `AIMessage`s with `tool_calls`.
+- **Alternatives:**
+  - *[retrospective]* Mock `ChatAnthropic` HTTP calls. Con: brittle and provider-specific.
+  - *[retrospective]* Only real-model tests. Con: costly and needs a key.
+- **Validation:** 7 agent tests pass offline.
+- **Interview line:** "The whole agent loop is tested offline with a scripted model, so CI never needs an API key."
+
+### P-034: Python tooling and configuration
+- **Choices:**
+  - `python -m venv backend/.venv` (gitignored).
+  - `backend/requirements.txt` with pinned top-level versions.
+  - A settings dataclass reading env vars, plus `python-dotenv` for an optional repo-root `.env` (gitignored).
+  - `.env.example` with placeholders.
+  - pytest markers `live` (network) and `llm` (paid API), deselected by default.
+- **Alternatives** *[retrospective]*:
+  - uv or Poetry: an extra tool for reviewers.
+  - `pydantic-settings`: an extra dependency for 7 variables.
+- **Validation:** the health test confirms the model ID comes from `LLM_MODEL`. `.env.example` is not ignored (`!.env.example`, line 7).
+
+### P-035: Frontend template defaults
+- Kept the `create-vite@9.3.3` `react-ts` template's TypeScript `~7.0.2` and **oxlint** (the template's linter).
+- Removed the demo assets, `App.css`, `icons.svg`, and the template README.
+- The page is a minimal status view (not the chat UI, which is Phase 8). Typed client: `src/api.ts`.
+- **Alternatives:** ESLint (the template no longer uses it), or downgrading TS (no reason to).
+- **Validation:** lint and build pass.
+
+### P-036: Non-aviation smoke tool
+- `lookup_test_value(key)`: a fixed fixture `{alpha: 11, beta: 22, gamma: 33}`, a Pydantic `pattern` constraint, and `content_and_artifact`.
+- It is deliberately unrelated to the assignment scenarios, so no scenario answers are hardcoded. It will be removed or kept as a test-only tool once the domain tools exist (Phase 7).
+
+### Approved decisions now partly implemented (evidence above; not yet IMPLEMENTED for the domain)
+- **D-034** (single server + Vite proxy): **IMPLEMENTED** (checks 10 and 11 pass).
+- **D-042** (Pydantic tool validation, in-memory sessions): the mechanism is implemented and tested with the smoke tool. The domain tools come in Phase 7.
+- **D-033** (configurable model): `LLM_MODEL` is configurable (tested). **Model availability is not verified.**
+
+### Time
+- Phase 4 planned 1.5 h. Actual: roughly within plan (not precisely timed). It is recorded here as an estimate only.
+
+### Phase 4 cleanup and verification pass (2026-10-30)
+
+**Verified vs. unverified (as of this pass):**
+
+| Item | Status | Evidence |
+|---|---|---|
+| NOTES.md not ignored | **Verified** | `git check-ignore -v --no-index NOTES.md` → no match (exit 1) after removing line 22 |
+| LLM configured on this machine | **Verified: not configured** | `ANTHROPIC_API_KEY` is absent from the process and user environment. `ANTHROPIC_AUTH_TOKEN` is absent. No `.env`. Values were never printed. |
+| Env var names langchain-anthropic reads | **Verified** (source inspection, installed 1.7.7) | References `ANTHROPIC_API_KEY`, `ANTHROPIC_API_URL`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_EXTRA_FIELDS`, `ANTHROPIC_MCP_SERVERS`, `ANTHROPIC_PROXY`. **Not `ANTHROPIC_AUTH_TOKEN`.** With only `ANTHROPIC_AUTH_TOKEN` set, `ChatAnthropic(...)` constructs with an **empty** API key. |
+| App env vars | **Verified** (code + tests) | `ANTHROPIC_API_KEY` (required for the LLM), `LLM_MODEL` (default `claude-opus-5-5`), `LLM_EFFORT` (`medium`), `LLM_MAX_TOKENS` (16000), `AGENT_MAX_MODEL_CALLS` (8), `BTS_APP_TOKEN` (optional). `test_model_id_comes_from_env` passes. |
+| `claude-opus-5-5` valid and usable via LangChain | **UNVERIFIED (BLOCKED)** | `pytest -m llm` → 2 skipped ("ANTHROPIC_API_KEY not configured"). Only the request **construction** was verified offline (Phase 4). |
+| Adaptive-thinking round-trip through `InMemorySaver` with the real model | **UNVERIFIED (BLOCKED)** | Same |
+| Synchronous tool-result extraction (`agent.invoke` → `extract_turn`) | **Verified** | 4 fake-model tests call `extract_turn` on `agent.invoke` results (`test_agent_fake_model.py` lines 23, 54, 75, 91). Artifacts, the input match by `tool_call_id`, turn isolation, and error status are all asserted. |
+| Async extraction (`agent.ainvoke`) | **UNVERIFIED, scheduled** | `implementation-plan.md` Phase 7 acceptance criteria: repeat the extraction and memory tests on the async path if `/api/chat` uses `ainvoke` |
+| Live BTS API | **Verified** | `pytest -m live` → 1 passed |
+| Offline suite | **Verified** | `pytest` → 10 passed, 3 deselected |
+
+#### D-045: NOTES.md is tracked, never ignored
+- **Phase / status:** 4 cleanup, **APPROVED** (user instruction). `.gitignore` line 22 was removed by the assistant. **The commit is pending with the user.**
+- **Context:** the user had re-added `NOTES.md` to `.gitignore` after the Phase 3 commit (recorded in §1 as an observation). Now reversed by the user's own decision.
+- **Why:** the journal is a core deliverable for interview preparation and traceability. An ignore rule on a tracked file is fragile (D-036 analysis).
+- **Validation:** `git check-ignore` shows no match. The file stays tracked (`git ls-files NOTES.md`).
+- **Interview line:** "The decision journal is part of the deliverable, so it's versioned like code."
+
+#### P-037: `llm_configured` checks `ANTHROPIC_API_KEY` only
+- **Phase / status:** 4 cleanup, PROPOSED (a minimal fix in the working tree, tests pass).
+- **Problem found:** `settings.llm_configured` treated `ANTHROPIC_AUTH_TOKEN` as sufficient. But `langchain-anthropic` 1.7.7 does not read it: `ChatAnthropic` constructs with an empty key. That would make `/api/health` report "configured" and let the `llm` tests run instead of skipping, then fail on authentication.
+- **Alternatives:**
+  - *[retrospective]* Pass `ANTHROPIC_AUTH_TOKEN` through explicitly as the key. Con: OAuth tokens use a different header (Bearer) than API keys, and it is unverified with this integration.
+  - *[retrospective]* Leave it. Con: misleading status.
+  - *[selected]* Recognize `ANTHROPIC_API_KEY` only, and document it in `.env.example` and the README.
+- **Validation:** new test `test_auth_token_alone_does_not_count_as_configured` passes.
+- **Impact:** minutes.
+- **Interview line:** "I checked which credential variable the integration actually reads before trusting my own 'configured' flag. It turned out to accept only the API key."
+
+#### Real-model verification attempt (2026-10-30, after the user added `ANTHROPIC_API_KEY` to the root `.env`)
+| Step | Result | Evidence |
+|---|---|---|
+| Key detected by the app (value never printed) | **Verified** | `get_settings().llm_configured → True`. `.env` ignored (`.gitignore:5`). |
+| `pytest -m llm` (2 real LangChain tests) | **FAIL → root cause is account billing, not code** | Both failed with `AnthropicInvalidRequestError: Error code: 400 … 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'` (request_id `req_011CgYSW3p7ACH4Ewt3VnWrT`). The key **authenticated** (a bad key would be 401). |
+| Is the model ID valid for this account? | **Verified via the Models API** (no credits consumed) | `models.retrieve("claude-opus-5-5")` → OK, "Claude Opus 5.5". `claude-sonnet-5-5` and `claude-haiku-5-5` also OK. `models.list` shows 14 models available to the key, including all three. |
+| Is the failure model-specific or LangChain-specific? | **Neither: account-level** | A direct Anthropic SDK `messages.create(model="claude-haiku-5-5", max_tokens=16)` with no LangChain → the same 400 credit-balance error. |
+| Real tool invocation, memory, and thinking round-trip | **BLOCKED** (billing) | Not reachable until the account has credits |
+| Offline suite / live BTS | **PASS** | `pytest` → 10 passed. `pytest -m live` → 1 passed. |
+
+- **Decision: do not switch models.** The P-028 fallback (→ `claude-sonnet-5-5`) is for *model-specific* failures. This failure is account-wide (it reproduces on Haiku via the raw SDK), so switching would not help and would only change the design for no reason. `LLM_MODEL` stays `claude-opus-5-5` (configurable).
+- **What is now verified vs. not:**
+  - Verified: the key authenticates, and `claude-opus-5-5` exists and is available to the account.
+  - Verified: LangChain builds and sends the request (the 400 came back from the API through `ChatAnthropic` → `create_agent`, so the integration path reaches the API).
+  - **Not verified:** a successful model response, real tool calling, real memory, and adaptive-thinking round-trip (A-019).
+- **Interview line:** "When the real-model test failed, I separated the possible causes: the Models API proved the ID was valid, a raw SDK call reproduced the error without LangChain, so I knew it was account billing and didn't 'fix' the code or the model choice."
+
+#### To unblock the real-LLM smoke tests (user action)
+0. **Add credits** to the Anthropic account behind this key (Console → Plans & Billing). This is the current blocker.
+1. `copy .env.example .env`, then set `ANTHROPIC_API_KEY=<your key>` in `.env` (gitignored). Optionally set `LLM_MODEL`.
+2. `cd backend; .venv/Scripts/python -m pytest -m llm -v -rs`
+3. If the model ID or compatibility fails: set `LLM_MODEL=claude-sonnet-5-5` and re-run (P-028). Record the error in this journal.
+
+---
+
 ## 4. Superseded / revisited decisions
 
 | Original | Original content (kept) | Status | Replaced by | Why it changed |
@@ -967,13 +1127,15 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | A-015 | July 2026 T-100 download works like Dec 2025 | Unverified |
 | A-016 | T-100 `DISTANCE` is in statute miles | Unverified |
 | A-017 | 300-flight threshold is a reasonable *warning* level | Unverified. Now a configurable warning (D-029). Check the distribution in the snapshot. |
-| A-018 | LangChain's default handling of Pydantic tool-arg validation errors (vs. our middleware) | Unverified (Phase 4 spike) |
-| A-019 | `create_agent` + `ChatAnthropic` work with `claude-opus-5-5`: automatic tool choice, adaptive thinking blocks round-trip through `InMemorySaver` history | Unverified (Phase 4 spike) |
-| A-020 | `recursion_limit` in the run config bounds tool rounds as expected | Unverified (Phase 4 spike) |
-| A-021 | A fake chat model is available in langchain-core test utilities for API tests | Unverified (Phase 4) |
+| A-018 | LangChain's default handling of Pydantic tool-arg validation errors (vs. our middleware) | **Verified (fake model, 2026-10-30):** `ToolNode` converts the validation error to `ToolMessage(status="error")` and the run continues. |
+| A-019 | `create_agent` + `ChatAnthropic` work with `claude-opus-5-5`: automatic tool choice, adaptive thinking blocks round-trip through `InMemorySaver` history | **BLOCKED (2026-10-30): account credit balance too low (HTTP 400).** The key is valid and the model ID is available (Models API). Earlier: BLOCKED (no API key). Memory mechanics verified with the fake model. The request payload was verified offline (no forced `tool_choice`, adaptive thinking, effort). Real model call pending. |
+| A-020 | `recursion_limit` in the run config bounds tool rounds as expected | **REVISITED:** replaced by `ModelCallLimitMiddleware` (P-032), verified with the fake model. `recursion_limit` itself was not tested. |
+| A-021 | A fake chat model is available in langchain-core test utilities for API tests | **Verified, with a caveat:** `GenericFakeChatModel` exists but lacks `bind_tools`. A subclass works (P-033). |
 | A-023 | API `total_departures` includes all-cargo classes; seats and passengers come from passenger-capable classes | **Verified (2026-10-30):** ANC Dec 2025 G 2,932 + P 1,398 of 6,872 departures. Seats: F 238,358, L 10,171, P 137, G 0. |
 | A-024 | On-time `DepDel15` blank ⇔ cancelled; definitions per the BTS Fields page | **Verified (2026-10-30, SFO Jul 2026):** 156 blanks, all cancelled. 3 cancelled rows have a `DepDel15` value (excluded by the `Cancelled=0` rule). No blank `TaxiOut` on non-cancelled rows. |
-| A-022 | `ToolMessage.artifact` is preserved on the messages returned by `agent.ainvoke` (and through the checkpointer) for `content_and_artifact` tools | Unverified (Phase 4 spike). Fallback: a `contextvars` collector (architecture §10.1 step 5). |
+| A-026 | `claude-opus-5-5` is available to the configured account | **Verified (Models API, 2026-10-30):** `retrieve` OK. `claude-sonnet-5-5` and `claude-haiku-5-5` are also available. Message generation is still unverified (billing). |
+| A-025 | Credentials read by `langchain-anthropic` | **Verified (1.7.7 source + construction test, 2026-10-30):** `ANTHROPIC_API_KEY` is read. `ANTHROPIC_AUTH_TOKEN` is **not**. |
+| A-022 | `ToolMessage.artifact` is preserved on the messages returned by `agent.ainvoke` (and through the checkpointer) for `content_and_artifact` tools | **Verified (fake model, sync `invoke`, 2026-10-30):** the artifact is present on returned messages and persists in the thread state across turns. The contextvars fallback is not needed. Async `ainvoke` is to be confirmed in Phase 7. |
 
 ### 5.3 Why NOTES.md is ignored by Git, and the fix (P-025 → **approved as D-036**, applied to the working tree on 2026-10-30, commit pending with the user)
 > **Applied version:** see D-036. It also ignores `data/processed/` until the D-037 checks pass. The proposal text below is kept as written.

@@ -23,7 +23,7 @@ The budget is the approved **24 h planning target with 3 h contingency** (D-031)
 | 1 | Requirements & Project Setup | **Completed** (D-012) | 1.0 | 1.0 |
 | 2 | Data Sources Research | **Completed** (D-015) | 2.0 | 2.0 |
 | 3 | Architecture & Scoring Design | **Completed**, pending the user's Phase 3 commit | 1.5 | 2.0 |
-| 4 | Project Foundation + smoke tests | Pending approval | 1.0 | 1.5 |
+| 4 | Project Foundation + smoke tests | **Approved** (offline smoke tests). Real-LLM smoke tests **BLOCKED by Anthropic account credit balance** (HTTP 400). Key valid. `claude-opus-5-5` available (Models API). | 1.0 | 1.5 |
 | 5 | Aviation Data Integration | Pending | 3.0 | 3.0 |
 | 6 | Deterministic Analytics Engine | Pending | 3.0 | 2.5 |
 | 7 | LangChain Agent & Conversation | Pending | 4.0 | 3.0 |
@@ -72,6 +72,7 @@ Estimates for Phases 1–3 are approximate (actual times were not tracked precis
 - **Suggested commit:** `docs: finalize phase 3 architecture, scoring design, and decision journal`
 
 ## Phase 4: Project Foundation + Smoke Tests (1.5 h)
+- **Status (2026-10-30):** implemented and awaiting user review. Smoke-test results are in NOTES.md §3b. All checks pass except the real-model checks (#1 and the thinking round-trip in #3), which are **BLOCKED** until `ANTHROPIC_API_KEY` is set. Smoke test #4's middleware was implemented with the built-in `ToolErrorMiddleware` (P-031). Smoke test #5's loop limit was implemented with `ModelCallLimitMiddleware` (P-032).
 - **Goal:** a minimal skeleton, plus empirical verification of the risky integration assumptions **before** building on them.
 - **Deliverables:**
   - `backend/` (FastAPI app with `/api/health`, settings from env, pytest setup).
@@ -154,6 +155,8 @@ Estimates for Phases 1–3 are approximate (actual times were not tracked precis
   - **Stretch, ≤ 1 h, only after Q1–Q4 pass:** `aggregate_metrics` with the session evidence store (D-044, P-030). Otherwise deferred and documented.
 - **Acceptance criteria:**
   - Fake-model tests: single, parallel, and failing tool calls. Evidence equals direct engine output. A second turn returns only that turn's evidence (D-041).
+  - **Async path:** if `/api/chat` uses `agent.ainvoke`, repeat the artifact-extraction and memory tests on the async path. Phase 4 verified the synchronous `invoke` path only (A-022).
+  - **Real-model smoke tests** (`pytest -m llm`) pass with the configured `LLM_MODEL`. In Phase 4 they were BLOCKED, first for lack of an API key, then by the account's credit balance (HTTP 400). Re-run them as soon as credits are added, ideally **before** Phase 7 work starts.
   - Real-model runs of Q1–Q4 return evidence and disclosures.
   - Follow-ups work.
 - **Dependencies:** Phase 6.

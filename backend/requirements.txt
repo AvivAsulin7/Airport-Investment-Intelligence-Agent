@@ -1,0 +1,8 @@
+# Backend dependencies (pinned to the versions verified in Phase 4, 2026-10-30)
+fastapi==0.162.0          # HTTP API + static serving of the built React app
+uvicorn==0.54.0           # ASGI server
+httpx==0.28.1             # BTS public API client (also used by FastAPI TestClient)
+langchain==1.4.7          # agent orchestration: create_agent, tools, middleware (D-024)
+langchain-anthropic==1.7.7  # ChatAnthropic integration (configurable model, D-033)
+python-dotenv==1.2.4      # load the optional repo-root .env (no secrets in code)
+pytest==9.2.0             # tests
