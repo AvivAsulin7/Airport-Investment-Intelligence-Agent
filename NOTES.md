@@ -126,6 +126,10 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | 2026-10-30 | D-047 | Use `claude-sonnet-5-5` (via `.env`) to reduce cost; supersedes P-022's Opus default for project runs | 5→6 | APPROVED | |
 | 2026-10-30 | — | Real-LLM smoke tests **PASS** with `claude-sonnet-5-5` (1 paid run, 2 tests, about $0.008). Credits added by the user. | 5→6 | Verified | |
 | 2026-10-30 | D-048 | Code default model `claude-sonnet-5-5` (`LLM_MODEL` still overrides); README and architecture updated | 5 (close) | APPROVED; implemented, offline tests pass (49) | |
+| 2026-10-30 | — | Phase 5 approved (P-038 to P-045); Phase 6 started | 5→6 | APPROVED | |
+| 2026-10-30 | P-046 to P-052 | Phase 6 engine choices: pure functions + service envelope, comparison baseline, long-haul variants, peer percentile, 2019 baseline, confidence rules, ranges incl. insufficient airports | 6 | PROPOSED (implemented; 84 offline + 7 live tests pass) | |
+| 2026-10-30 | OQ-13 | Small-airport noise in the Q1 ranking (low-sample airports rank high) | 6 | Resolved by D-049 | |
+| 2026-10-30 | D-049 | Keep methodology; small-sample warnings surfaced at 3 levels; interpretation separates relative score from verified opportunity; optional hub-class filter (same scoring) | 6 (review) | APPROVED; implemented, 89 offline tests pass | |
 
 ---
 
@@ -1302,6 +1306,166 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 ### P-043: OurAirports not integrated in the MVP
 - The FAA file already provides state, FAA region, service level, and hub for every commercial airport. OurAirports' licence (A-014) is unverified.
 - **Alternative:** add OurAirports for coordinates and municipality. Not needed: distances come from T-100. Deferred.
+
+---
+
+## 3d. Phase 6: Deterministic Analytics and Scoring (2026-10-30), implementation journal
+
+> Implements the approved formulas and scoring (D-028, D-029, D-039, D-040, P-029) on top of the Phase 5 data layer. New implementation choices are labelled PROPOSED until reviewed. **No paid LLM calls were made in Phase 6.** Results below come from commands actually run.
+
+### What was built (`backend/app/engine/`, no LangChain, Anthropic, or LangGraph imports, verified by grep)
+| Module | Role |
+|---|---|
+| `registry.py` | Metric registry (id, formula text, unit, source, direct vs. proxy, scoring-allowed) and the default weights .30 / .25 / .15 / .20 / .10 |
+| `kpis.py` | `traffic_windows(latest)` (T12M and prior 12 months); `traffic_kpis` (passenger growth, departure growth, load factor, T12M volumes); `operational_kpis` (delay rate, cancellation rate, taxi-out, avg departure delay, `low_sample` flag). Each value carries numerator, denominator, window, missing reason, and flags. |
+| `scoring.py` | Pure `rank_airports()` implementing scoring v1 exactly (§7.1a–§7.1c): weight validation, ≥3 values per KPI, candidate-group min-max, 50 on equal values, weights re-scaled over usable KPIs, coverage, the 0.60 threshold, ≥3 ranked airports, tie-break, `rank_changes`, log10 for passenger volume |
+| `analyses.py` | Pure `compare()`, `long_haul_share()`, `peer_position()`, `delay_cause_shares()`, `demand_profile()` |
+| `service.py` | `AnalyticsService`: fetches via `DataLayer` (live API in batches of ≤30 airports plus snapshots) and returns a JSON envelope `{result_type, data, provenance, windows, definitions, warnings, coverage_notes, confidence, formula_version}`. This is the shape Phase 7 tools will return as artifacts. |
+
+### Exact formulas implemented (unchanged from P-029 / D-039)
+- **passenger_growth** = Σ`total_passengers`(T12M) / Σ(prior 12) − 1. **departure_growth** is the same on `total_departures`, which includes all-cargo classes.
+- **load_factor** = Σ`total_passengers` / Σ`total_seats` over T12M.
+- **delay_rate** = `depdel15_delayed / depdel15_eligible` (Origin=X, Cancelled=0, DepDel15 present). **cancellation_rate** = `cancelled / rows`. **avg_taxi_out_min** = `taxi_out_sum / taxi_out_n` (non-cancelled).
+- **long-haul share** = Σ departures performed with `DISTANCE ≥ threshold` (statute miles) / Σ departures performed, over the selected classes. The default is 3,000 mi with F+L, and the all-class variant is always included.
+- **Missing data:** any month missing in a window → growth or load factor `null` with the months listed. Prior = 0 → `null`. Seats = 0 → `null`. Zero eligible flights → `null`. An airport absent from on-time data → `null` ("not served by BTS reporting carriers"). Nothing is ever imputed.
+
+### P-046: Engine structure: pure functions plus a thin service with an envelope
+- **Alternatives** *[retrospective]*:
+  - One class doing fetching and math. Con: untestable without network.
+  - Pandas. Con: an extra dependency for small arrays.
+- **Why:** the fictional §9 examples test the scoring directly. The service envelope is reused unchanged by the Phase 7 tools (D-030).
+- **Interview line:** "The math is pure functions tested on fictional data; a thin service adds data access and provenance."
+
+### P-047: Comparisons are relative to the first-listed airport
+- `differences[metric][airport] = {absolute: v − v_base, relative: (v − v_base)/v_base}`. No composite score (P-010).
+- **Alternative** *[retrospective]*: an all-pairs matrix. Con: noisy for 3–5 airports.
+
+### P-048: Long-haul output always includes the all-class variant, class breakdown, and 1,000-mile bands
+- The service always loads all classes (F, G, L, P), so the all-class share is exact. The selected classes come from the caller (default F+L, explicit).
+- The threshold is an integer from 500 to 10,000, and the boundary is **inclusive** (≥).
+
+### P-049: Peer group and percentile for the Q4 profile
+- Peers = FAA primary airports in the **same FAA hub class** (L, M, S, N), excluding the subject.
+- **Percentile** = % of peers with a **strictly lower** value. `rank_desc` = 1 + the number of peers with a higher value. At least 3 peers with data are needed, otherwise `null`.
+- **Alternatives** *[retrospective]*:
+  - All US airports. Con: mixes very different scales.
+  - Same FAA region. Con: too few large peers.
+- **Risk:** hub class is based on enplanements, not capacity.
+
+### P-050: 2019 traffic baseline for Q4 from the live API
+- Calendar 2019 passengers via the live API (`2019-01..2019-12`), giving `t12m_vs_2019`. Shown as observed context (P-013), **not** as unmet demand. `null` if any 2019 month is missing.
+
+### P-051: Confidence labels (rule-based)
+- **Ranking:** `medium` when ranked (a composite of proxies over mixed windows). `low` if not ranked or if the recorded API fallback was used. Per-airport `partial` and `low_sample` flags stay on the airport.
+- **Comparison:** `medium`; `low` if any value is low-sample or the fallback was used.
+- **Long-haul:** `high` when the share is computed (direct measurement); `low` otherwise.
+- **Demand profile:** `medium`; `low` with the fallback.
+- **Alternative** *[discussed in Phase 3]*: lower the whole ranking for any partial airport. Rejected because it hides which airport is the problem.
+
+### P-052: Normalization ranges include airports later marked "insufficient data"
+- This follows §7.1a literally: S_k = all candidate airports with a value. Insufficient airports keep their raw values, with no score or contributions.
+- **Alternative** *[retrospective]*: compute ranges only over ranked airports. Con: circular (coverage depends on usability).
+
+### Test results (Phase 6, run 2026-10-30)
+- `pytest` (offline): **84 passed**. The 36 new tests cover:
+  - KPI formulas, negative growth, missing months, zero denominators, and low-sample at 299 vs 300.
+  - Scoring: both §9 worked examples exactly, contributions summing to the score, equal values → 50, KPI drop and re-scaling, coverage < 0.60, fewer than 3 airports, fewer than 3 ranked, no usable KPI, tie-break, negative growth, the log10 volume, and weight validation.
+  - Analyses: long-haul 9.5% / 26.8%, the inclusive threshold, cargo-only selection, threshold validation, zero denominator, comparison differences, peer percentile, and cause shares.
+- **First-run failure (test bug, not engine bug):** `test_fewer_than_three_ranked_after_coverage_is_not_ranked` used a KPI with only 2 values. The engine correctly **dropped** that KPI (≥3 rule) before computing coverage, so everything ranked. The test was rewritten so every KPI has ≥3 values, and the original case is kept as `test_kpi_with_two_values_is_dropped_before_coverage_is_computed`.
+- `pytest -m live`: **7 passed** (Q1–Q4 acceptance scenarios, a generality test with Florida, SEA, and BOS/BDL/PVD, and the 2 BTS checks).
+
+### Scenario results (real data; live BTS API T12M = 2025-08..2026-07 vs 2024-08..2025-07; snapshots = 2026-07)
+These are engine outputs for review, **not** hardcoded expectations.
+
+- **Q1 New England** (16 FAA primary airports, region NE; confidence medium): ranked 16 of 16.
+  - Top: **BGR 85.4**, PSM 75.6 (low-sample: 36 flights), ORH 73.9 (low-sample: 62), HVN 67.4 (partial 70%: no on-time data), BOS 65.8.
+  - Bottom: PQI 19.1 (low-sample: 29), WST 9.1 (partial), BID 3.0 (partial).
+  - **Interpretation risk (OQ-13):** very small airports rank high because delay rates from tens of flights are noisy and min-max rewards extremes. They are flagged, as designed (D-029), but an analyst could be misled. See the options below.
+- **Q2 LAX vs SNA** (July 2026; confidence medium):
+
+  | Metric | LAX | SNA |
+  |---|---|---|
+  | Delay rate | **25.5%** (4,399 / 17,244) | **26.0%** (1,025 / 3,947) |
+  | Cancellation rate | 1.20% (210 / 17,454) | 1.13% (45 / 3,992) |
+  | Avg taxi-out | 18.8 min | 16.8 min |
+  | T12M departures | 267,187 | 51,396 |
+
+  Delay rates are similar. SNA taxi-out is 2.1 min shorter.
+- **Q3 Anchorage** (July 2026; confidence high):
+
+  | Classes | Long-haul departures | All departures | Share |
+  |---|---|---|---|
+  | **Passenger (F+L)** | **228** | 5,379 | **4.2%** |
+  | **All classes** | **2,103** | 9,087 | **23.1%** |
+
+  All-cargo classes are 3,708 of 9,087 departures, and that warning is included.
+- **Q4 SFO** (peers = 29 other FAA large hubs; confidence medium):
+  - Observed: T12M passengers 26,488,605 (+0.6% YoY), departures +0.5%. vs CY2019: −5.0%.
+  - Pressure:
+
+    | Indicator | Value | Peer percentile | Rank of 30 |
+    |---|---|---|---|
+    | Load factor | 82.1% | 86th | 5 |
+    | Delay rate | 35.5% | 83rd | 6 |
+    | Taxi-out | 25.1 min | 83rd | 6 |
+    | Cancellation rate | 1.15% | 21st | — |
+
+  - Arrival-delay causes: NAS 49.4%, late aircraft 26.0%, carrier 21.3%, weather 3.2%.
+  - `unmet_demand.measured = false`.
+
+### Open question (Phase 6)
+- **OQ-13: small-airport noise in Q1.** The design keeps low-sample values with a warning (D-029). Options:
+  - (a) Keep as is (flags only).
+  - (b) Require hub class S or larger for expansion rankings.
+  - (c) Raise the default `min_coverage` or exclude low-sample operational KPIs from the score while still showing them.
+  - Any change to the approved rules needs the user's decision. No change was made.
+  - **Resolved by D-049 (option a, with stronger surfacing and an optional hub filter).**
+
+### Phase 6 review follow-ups (2026-10-30)
+
+#### D-049: Keep the ranking methodology; surface small-sample warnings; optional hub-size focus
+- **Phase / status:** 6 review, **APPROVED** (user decision on OQ-13).
+- **Decision:**
+  - Keep scoring v1 unchanged: same KPIs, weights, formulas, and thresholds. Small airports are **not** excluded automatically.
+  - Airports with fewer than 300 eligible departures in the month must carry a clear small-sample warning that downstream consumers cannot lose.
+  - Explanations must separate a high relative score from a verified investment opportunity.
+  - The existing hub-size data can focus comparisons **without** a second scoring methodology.
+- **Implementation (offline-tested):**
+  - **Small-sample warning at three levels** of every ranking, comparison, and demand-profile result:
+    1. A structured list `data.small_sample_airports = [{airport, eligible_departures, threshold, period, affected_metrics}]`.
+    2. A top-level envelope `warnings` entry per airport: "Small sample: X has N eligible departures in 2026-07 (< 300); its delay, cancellation and taxi-out values are statistically noisy. Included with this warning, not excluded."
+    3. The per-airport `flags` (`low_sample: …`), as before.
+
+    Because the warning is in the envelope (the future tool artifact) and in `data`, a Phase 7 tool that forwards the artifact cannot drop it. Verified by `test_small_sample_warning_survives_at_every_level`, which round-trips the result through `json.dumps`/`json.loads`.
+  - **Interpretation text** now states: "A high relative score means stronger demand-pressure indicators than the other airports in this group; it is a lead for further analysis, not a verified investment opportunity …", plus the existing caveats (not profitability, no capacity proof, group-relative, coverage comparability, small samples).
+  - **Hub filter:** `AnalyticsService.rank(..., hub_classes=["L","M","S"])` narrows the candidate group *before* scoring, using FAA hub classes L/M/S/N. It records `candidate_group.hub_filter = {hub_classes, excluded_airports}` and validates the values. `test_hub_filter_narrows_the_group_without_changing_the_methodology` proves that the filtered ranking equals ranking the same airports explicitly (same scores and weights). The default stays unfiltered.
+  - Comparisons with small samples get confidence `low` (P-051 unchanged).
+- **Alternatives** *[discussed]*:
+  - (b) Hard hub-class eligibility. Rejected: it changes the approved methodology and hides small airports.
+  - (c) Excluding low-sample KPIs from the score. Rejected for the same reason.
+- **Tradeoff:** small airports with noisy delay rates can still rank high (for example PSM and ORH in the Q1 real run). Mitigated by visible warnings and the optional focus filter.
+- **Validation:** `pytest` (offline) → **89 passed** (5 new service tests with a fake data layer). No paid LLM calls. The live scenario tests were not re-run in this pass (user instruction: offline only). They last passed 7/7 before this change. The change only adds fields and warnings, and does not alter scores.
+- **Interview line:** "I didn't silently drop small airports. Their warning travels with the data at every level, and analysts can narrow the peer group by hub size without changing the scoring."
+
+#### Phase 6 decision table (for final approval)
+| ID | Implementation decision | Reason | Alternative considered | Remaining risk |
+|---|---|---|---|---|
+| P-046 | Engine = pure functions (`kpis`, `scoring`, `analyses`) plus a thin `AnalyticsService` that returns a JSON envelope (`result_type, data, provenance, windows, definitions, warnings, coverage_notes, confidence, formula_version`) | Testable without network or LLM. The envelope is reused as the Phase 7 tool artifact. | One class mixing I/O and math; pandas | The envelope schema must stay in sync with the Phase 7/8 types |
+| P-047 | Comparisons report absolute and relative differences vs the **first-listed** airport, with no composite score | Simple and readable. Matches P-010. | An all-pairs difference matrix | The baseline depends on argument order (stated in `baseline`) |
+| P-048 | Long-haul always loads all classes and returns the selected-class share **and** the all-class share, a class breakdown, and 1,000-mile bands. Threshold 500–10,000, **inclusive** (≥). | Prevents cargo mixing while disclosing its effect (ANC) | Return only the selected classes | Single month, so seasonality remains |
+| P-049 | Q4 peers = FAA primary airports in the same hub class. Percentile = % of peers strictly lower. `rank_desc`. Needs ≥3 peers. | Comparable scale, transparent definition | All US airports; same FAA region | Hub class reflects enplanements, not capacity |
+| P-050 | Q4 shows calendar-2019 passengers from the live API and `t12m_vs_2019` as observed context only | Recovery context for "unmet demand" without claiming it | Omit the baseline | 2019 may not represent "normal"; this is stated as context only |
+| P-051 | Rule-based confidence: ranking medium (low if not ranked or fallback); comparison medium (low with a small sample or fallback); long-haul high when computed; profile medium | Honest about proxies and mixed windows | Lowering the whole ranking for any partial airport | The labels are coarse |
+| P-052 | Normalization ranges include airports later marked "insufficient data"; those keep raw values but no score | Literal reading of approved §7.1a; avoids circularity | Ranges over ranked airports only | An insufficient-data outlier can stretch a range |
+
+#### Scenario coverage: real integration tests, not hardcoded answers
+- `tests/test_engine_scenarios.py` (marker `live`; needs the built snapshots) runs Q1–Q4 through `AnalyticsService` against the **real** data layer (live BTS API plus the July 2026 snapshots). It asserts **invariants**, not expected numbers:
+  - **Q1:** ranked; the candidate group equals the resolver's New England set; ranks are consecutive and scores descending; coverage ≥ 0.6; both source types present; the period-mismatch warning is present.
+  - **Q2:** "LA" → LAX and "Santa Ana" → SNA via the resolver; each rate = numerator / denominator; no composite score.
+  - **Q3:** share = numerator / denominator; the all-class denominator = the sum of the classes; the all-class share ≠ the passenger share; raising the threshold never increases the numerator.
+  - **Q4:** unmet demand not measured; ≥3 peers; percentiles in [0, 100]; cause shares sum to 1; 2019 window.
+- A generality test runs Florida, SEA, and BOS/BDL/PVD.
+- No test asserts a specific score, rank, or percentage from real data. The engine contains no airport-specific code (the only airport-specific entry is the approved `LA` → LAX alias in the resolver, P-011).
 
 ---
 

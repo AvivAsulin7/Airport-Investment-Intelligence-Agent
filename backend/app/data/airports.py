@@ -114,6 +114,10 @@ class AirportReference:
         wanted = {s.upper() for s in states}
         return self._filter(lambda a: a.state in wanted, primary_only)
 
+    def with_hub(self, hub: str) -> list[Airport]:
+        """Primary airports in an FAA hub class (L, M, S, N), used as peer groups."""
+        return self._filter(lambda a: a.hub == hub, primary_only=True)
+
     def _filter(self, pred, primary_only: bool) -> list[Airport]:
         rows = [a for a in self._by_code.values() if pred(a) and (a.is_primary or not primary_only)]
         return sorted(rows, key=lambda a: (-(a.enplanements_current or 0), a.code))

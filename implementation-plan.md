@@ -22,10 +22,10 @@ The budget is the approved **24 h planning target with 3 h contingency** (D-031)
 |---|---|---|---|---|
 | 1 | Requirements & Project Setup | **Completed** (D-012) | 1.0 | 1.0 |
 | 2 | Data Sources Research | **Completed** (D-015) | 2.0 | 2.0 |
-| 3 | Architecture & Scoring Design | **Completed**, pending the user's Phase 3 commit | 1.5 | 2.0 |
+| 3 | Architecture & Scoring Design | **Completed** (committed `3f29efd`) | 1.5 | 2.0 |
 | 4 | Project Foundation + smoke tests | **Approved.** Real-LLM smoke tests **PASS with `claude-sonnet-5-5`** (2026-10-30, D-047), after earlier blocks for no key and then no credits. | 1.0 | 1.5 |
-| 5 | Aviation Data Integration | **Implemented, awaiting final approval** (P-038 to P-045; Sonnet default D-048) | 3.0 | 3.0 |
-| 6 | Deterministic Analytics Engine | Pending | 3.0 | 2.5 |
+| 5 | Aviation Data Integration | **Approved** (P-038 to P-045; Sonnet default D-048) | 3.0 | 3.0 |
+| 6 | Deterministic Analytics Engine | **Implemented, awaiting review** (84 offline + 7 live tests pass) | 3.0 | 2.5 |
 | 7 | LangChain Agent & Conversation | Pending | 4.0 | 3.0 |
 | 8 | React Chat UI & End-to-End Integration | Pending | 3.0 | 3.5 |
 | 9 | Testing, Documentation & Delivery | Pending | 3.0 | 2.5 |
@@ -120,6 +120,10 @@ Estimates for Phases 1–3 are approximate (actual times were not tracked precis
 - **Suggested commit:** `feat: add BTS API client, snapshot builder, and airport resolver`
 
 ## Phase 6: Deterministic Analytics Engine (2.5 h)
+- **Status (2026-10-30):** implemented in `backend/app/engine/` and awaiting review. Details and scenario results are in NOTES.md §3d.
+  - Both §9 worked examples pass exactly.
+  - Q1–Q4 run end to end on real data (live API plus July 2026 snapshots).
+  - Open item: OQ-13 (small-airport noise in the Q1 ranking). **Resolved by D-049:** methodology kept, small-sample warnings surfaced in `data.small_sample_airports` and the top-level `warnings`, the interpretation text strengthened, and an optional `hub_classes` filter added. 89 offline tests pass.
 - **Goal:** implement the approved formulas (D-039; definitions P-029) as pure Python.
 - **Deliverables:**
   - Metric registry.
