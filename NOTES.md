@@ -130,6 +130,11 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | 2026-10-30 | P-046 to P-052 | Phase 6 engine choices: pure functions + service envelope, comparison baseline, long-haul variants, peer percentile, 2019 baseline, confidence rules, ranges incl. insufficient airports | 6 | PROPOSED (implemented; 84 offline + 7 live tests pass) | |
 | 2026-10-30 | OQ-13 | Small-airport noise in the Q1 ranking (low-sample airports rank high) | 6 | Resolved by D-049 | |
 | 2026-10-30 | D-049 | Keep methodology; small-sample warnings surfaced at 3 levels; interpretation separates relative score from verified opportunity; optional hub-class filter (same scoring) | 6 (review) | APPROVED; implemented, 89 offline tests pass | |
+| 2026-10-30 | — | Phase 6 approved (P-046 to P-052, D-049); Phase 7 started | 6→7 | APPROVED | |
+| 2026-10-30 | P-053 to P-058 | Phase 7 agent choices: unmodified artifacts + compact model view, verbatim user-facing errors, async chat factory, in-memory sessions, iteration-limit note, deferral of aggregate_metrics and rank_changes | 7 | PROPOSED (implemented; 111 offline + 7 live + 4 paid tests pass) | |
+| 2026-10-30 | — | Paid Phase 7 run: Q1, follow-up, Q2, Q3, Q4 with Sonnet 5.5, 12 model calls, about $0.16, 4/4 pass; 3 issues found and fixed offline | 7 | Verified (fixes offline only) | |
+| 2026-10-30 | P-059 | `/api/chat` adds `status` (complete / completed_with_tool_errors / incomplete) and `errors`; contract documented and tested | 7 (verification) | PROPOSED (implemented; 113 offline pass) | |
+| 2026-10-30 | — | Focused paid verification (ranking + hub follow-up + exact count + grounding) via real `/api/chat`: PASS, 5 model calls, about $0.10 | 7 (verification) | Verified | |
 
 ---
 
@@ -1469,6 +1474,132 @@ These are engine outputs for review, **not** hardcoded expectations.
 
 ---
 
+## 3e. Phase 7: LangChain Aviation Agent (2026-10-30), implementation journal
+
+> These are implementation choices within the approved design (D-024, D-030, D-032, D-041, D-042, D-047/048). They are labelled PROPOSED until reviewed. Results come only from commands actually run.
+
+### What was built
+| File | Role |
+|---|---|
+| `app/agent/tools.py` | 6 thin `@tool`s with Pydantic `args_schema` and `response_format="content_and_artifact"` over `AnalyticsService` (no formulas): `resolve_airports`, `rank_airports`, `compare_airports`, `get_long_haul_share`, `get_demand_pressure_profile`, `list_metrics`. **Artifact = the full engine envelope, unchanged.** Content = a compact JSON view of the same envelope for the model. |
+| `app/agent/prompts.py` | System prompt: tools for every number, no LLM arithmetic, no general-knowledge airport facts, keep periods and sources and **all small-sample warnings**, relative scores are leads (not verified opportunities), unmet demand not measured, load factor ≠ terminal utilization, explicit passenger vs cargo classes, resolve or clarify ambiguous names, follow-ups via re-calling tools, works beyond the 4 examples |
+| `app/agent/agent.py` | `extract_turn` now also aggregates `sources` and `warnings` **from artifacts only**, flags `incomplete` turns, and adds `error` text to error evidence. The tool-error handler returns the message verbatim for `DataValidationError`, `ScoringInputError`, and `BtsApiUnavailable` (so the model can self-correct); other errors are type-only. |
+| `app/main.py` | `create_app(service, chat_model)` factory. `POST /api/chat` (**async `ainvoke`**), request validation (message 1–2,000 chars, UUID session id), in-memory sessions (30 turns, 2 h idle, P-016), 503 without a key, 502 with a reference id on model failure. `POST /api/demo/{q1..q4}` labelled deterministic presets (D-032). |
+| `tests/test_agent_tools.py`, `tests/test_chat_api.py`, `tests/test_live_agent.py` | Offline tool and API tests; paid opt-in agent scenarios |
+
+### Tool schemas (inputs → artifact `result_type`)
+- `resolve_airports(query: str 1–100, kind: "airport"|"region")` → `airports` (`interpretation`, candidates with code, name, state, FAA region, hub, primary).
+- `rank_airports(region?: str ≤60 | airports?: list 3–30, weights?: {scoring metric: ≥0}, hub_classes?: ["L"|"M"|"S"|"N"])` → `ranking`.
+- `compare_airports(airports: list 2–5 (first = baseline), metrics?: list[metric id])` → `comparison`.
+- `get_long_haul_share(airport: ^[A-Za-z0-9]{3}$, threshold_miles: int 500–10,000 = 3000, service_classes: list[F|G|L|P], min 1, = [F, L])` → `long_haul`.
+- `get_demand_pressure_profile(airport, peer_group?: L|M|S|N)` → `demand_profile`.
+- `list_metrics()` → `metrics`.
+
+### How structured evidence reaches the frontend (verified)
+- **Path:** tool → `ToolMessage.artifact` (the full envelope) → `extract_turn` (this turn only) → `ChatResponse.evidence[i].artifact` plus aggregated `sources` and `warnings` → JSON.
+- The model sees only `content`. React (Phase 8) renders `evidence` directly (D-030).
+- **Verified offline:**
+  - `test_artifact_is_the_full_engine_envelope_and_serializable`: the artifact equals a direct `service.rank()` call after a JSON round-trip.
+  - `test_chat_returns_reply_and_full_evidence_via_async_path`: through FastAPI with **`ainvoke`**, the evidence carries `small_sample_airports` and the "Small sample: DDD" warning, and sources include both source types.
+- **Verified on the real path:** the paid run used `ainvoke` and asserted `small_sample_airports` was present in the real Q1 artifact.
+- **A-022 (async):** now verified for `ainvoke`, both with the fake model (offline) and with Sonnet (paid).
+
+### Test results
+- **Offline:** `pytest` → **111 passed** (22 new: 13 tool tests including 7 schema-rejection cases, routing, artifact equality, content warnings, rounding, hub classes, error redaction, and `list_metrics`; plus 9 chat API tests covering the async path, follow-up memory, session isolation, validation-error evidence, engine-error evidence, the iteration limit, input limits and the turn cap, and 503 + demo).
+- **Free live:** `pytest -m live` → **7 passed** (engine scenarios plus BTS).
+- **Paid (one controlled run, `RUN_LLM_TESTS=1 pytest tests/test_live_agent.py`, `claude-sonnet-5-5`, async path):** **4 passed** in 54.8 s. 5 user turns (Q1, a Q1 follow-up, Q2, Q3, Q4), **12 model calls, 58,621 input + 4,596 output tokens, ≈ $0.16** (at $2 / $10 per MTok, from the API's `usage_metadata`). The Phase 4 smoke tests were **not** re-run.
+
+### Problems found and fixes
+1. **Iteration-limit detection (offline failure, fixed).** `test_model_call_limit_marks_turn_incomplete` failed.
+   - Cause: `ModelCallLimitMiddleware(exit_behavior="end")` appends an `AIMessage` with the text "Model call limits exceeded: run limit (2/2)" and **no** tool calls (inspected directly). The original check only looked for pending tool calls.
+   - Fix: detect that marker and replace it with a user-facing "Analysis incomplete…" note. The test passes.
+2. **Precision loss in the model view (found in the paid run, fixed offline).** `_round` shortened every float to 4 significant digits, so SFO's 189,964 departures reached the model as 190,000 (the reply said "190,000"), and LAX's 267,187 as "about 267,200". The artifacts were exact.
+   - Fix: whole numbers are kept exact, values ≥ 1,000 are rounded to 1 decimal, and other fractions to 4 significant digits.
+   - Test: `test_model_view_keeps_counts_exact_and_rounds_only_fractions`. **Not re-verified with the paid model.**
+3. **Missing hub classes in the ranking result (found in the paid follow-up, fixed offline).** The model correctly said it could not tell which filtered airports were medium vs small hubs.
+   - Fix: `candidate_group.hub_classes = {code: hub}`. Test: `test_ranking_lists_hub_class_per_candidate`. **Not re-verified with the paid model.**
+4. **Small ungrounded descriptive claim (found in the paid Q3, mitigated by prompt).** The model called Merrill Field "a small general aviation airport", which is not in any tool output (numbers were not affected).
+   - Fix: a prompt rule against general-knowledge airport facts. **Not re-verified with the paid model.** A residual risk with any LLM.
+
+### Real-model answers (Sonnet 5.5, 2026-10-30; numbers come from the tools, prose from the model)
+- **Q1 New England:** called `rank_airports(region="New England")`. BGR is the strongest lead (85.4, full data). PSM and ORH were explicitly flagged as small samples (36 and 62 flights). HVN was flagged partial (70%). It stated that the scores are leads, not verified opportunities or profitability. Both periods and sources were stated.
+- **Follow-up**, "Now rank only the medium and small hub airports from that list": the same session (memory) produced `rank_airports(region="New England", hub_classes=["M","S"])`. 6 airports: HVN 80.6 (partial, called weak evidence), BTV 69.5, PWM 62.9, PVD 38.4, MHT 31.1, BDL 29.1. It explained that scores shift because they are relative to the group.
+- **Q2:** `resolve_airports` × 2, then `compare_airports(["LAX","SNA"])`. It stated "LA" = LAX and "Santa Ana" = SNA.
+
+  | Metric | LAX | SNA |
+  |---|---|---|
+  | Delay rate | 25.51% | 25.97% |
+  | Taxi-out | 18.81 min | 16.75 min |
+  | Cancellation rate | 1.20% | 1.13% |
+
+  It said the levels are "very similar" and called out the mismatched periods.
+- **Q3:** `get_long_haul_share("ANC")`, plus an all-class call.
+  - **4.239% of passenger departures (228 / 5,379, F+L)**.
+  - **23.14% of all classes (2,103 / 9,087)**. Cargo-only flights are 3,708 of the 9,087.
+  - It noted the 3,000-statute-mile threshold and the single month.
+- **Q4:** `get_demand_pressure_profile("SFO")`. It opened with "I can't give you a number for SFO's unmet flight demand, because none of the tools measure it". Observed: 26.49M passengers (+0.623%), −4.98% vs 2019. Pressure vs 29 large hubs: load factor 82.09% (86th percentile), delay rate 35.46% (83rd), taxi-out 25.05 min (83rd). Causes: NAS 49.4%, late aircraft 26.1%, carrier 21.3%, weather 3.2%. Its "why" was phrased as "consistent with", with caveats.
+
+### Decisions (PROPOSED, implemented)
+| ID | Decision | Reason | Alternative | Risk |
+|---|---|---|---|---|
+| P-053 | The tool artifact is the **unmodified** engine envelope. The model gets a compact JSON view built from it (metric_details omitted, fractions shortened, counts exact). | Frontend fidelity (D-030) and lower tokens | Send the full envelope to the model (cost); let the model echo numbers (unreliable) | The model view and artifact formats must stay in sync |
+| P-054 | Validation, scoring and BTS-outage errors are shown to the model verbatim; other errors are type-only | Lets the model self-correct without leaking internals | Type-only for all (the model cannot fix its call) | A verbatim message could contain user input (it is echoed only to the same user) |
+| P-055 | `POST /api/chat` is async (`ainvoke`) in a `create_app` factory with injectable service and model | Non-blocking server, testable without network or LLM | Sync endpoint | Sync tools run in a threadpool under `ainvoke` |
+| P-056 | Sessions: in-memory map session id → (thread id, turns, last seen). Idle > 2 h starts a new thread with a notice; > 30 turns → 409. | Implements P-016 without a database | A persistent store | Memory is lost on restart (documented) |
+| P-057 | The iteration limit is detected by the middleware's marker text and replaced with "Analysis incomplete…" | Gives a clear user message | Raise an error (`exit_behavior="error"`) | It depends on LangChain's message text (pinned version, tested) |
+| P-058 | **Deferred:** `aggregate_metrics` (D-044) and session `rank_changes` through tools | Q1–Q4 came first, and the user asked not to expand scope in Phase 7. D-044 allows deferral. | Build now (≤ 1 h) | Fewer flexible follow-ups ("average growth of these airports" → the agent explains it is not available) |
+
+### Phase 7 verification pass (2026-10-30)
+
+#### P-059: Explicit turn `status` and `errors` in `/api/chat`
+- **Status:** PROPOSED (implemented). An additive change to the response contract; `incomplete` is kept.
+- **Problem:** a turn whose tool failed returned no top-level signal, so a consumer could treat it as a clean success. Only `incomplete` existed.
+- **Change:**
+  - `status` is one of `complete`, `completed_with_tool_errors`, or `incomplete` (the call limit was hit; the raw middleware text is replaced by the "Analysis incomplete…" note).
+  - `errors` = `["<tool>: <error text>", …]` for the current turn.
+  - The contract is documented in README.md.
+- **Alternatives** *[retrospective]*:
+  - Return HTTP errors for tool failures. Con: loses the model's explanation and the partial evidence.
+  - Rely on `evidence[i].status` only. Con: easy to miss.
+- **Tests:** `test_response_contract_is_stable` (exact key sets for the response, evidence item, and artifact), `test_tool_validation_error_is_returned_as_error_evidence` (status `completed_with_tool_errors`), and `test_model_call_limit_marks_turn_incomplete` (status `incomplete`, raw marker hidden).
+
+#### Turn isolation vs memory
+- **Isolation:** `test_previous_turn_warnings_and_sources_do_not_leak_into_the_next_turn`. Turn 1's small-sample warning and sources do not appear in turn 2 (`list_metrics`), so turn 2 has `warnings == []` and `sources == []`.
+- **Memory:** `test_follow_up_uses_session_memory_and_returns_only_new_evidence` (the thread holds both human turns), plus the paid follow-up below, which resolved "that ranking" from memory.
+
+#### Focused paid verification (one opt-in run, `tests/test_live_agent_focused.py`, through the real `/api/chat`)
+- **Scenario:** one session, two turns.
+  1. "Rank the New England airports as terminal expansion candidates."
+  2. "Keep only the medium and small hubs from that ranking. For each, say whether it is a medium or small hub, and give the exact number of departures in the last 12 months for the top-ranked one."
+- **Result: PASS.** `claude-sonnet-5-5`, **5 model calls, 39,861 input + 2,172 output tokens, ≈ $0.10**, 27.5 s.
+- **Turn 1:** `rank_airports(region="New England")`, status `complete`. It listed all 5 small-sample airports (PSM 36, ORH 62, HYA 125, MVY 283, PQI 29) and the 3 partial-coverage airports. It stated that scores are leads, not verified opportunities. It described BOS as "the only large hub" and BDL as "the only medium hub", **using the new `hub_classes` data**.
+- **Turn 2:** `rank_airports(..., hub_classes=["M","S"])` + `compare_airports(["HVN","BTV"], ["departures_t12m"])`, status `complete`.
+  - **Hub classes stated correctly:** BDL = Medium, and HVN, BTV, PWM, PVD, MHT = Small. This matches `candidate_group.hub_classes` (asserted line by line).
+  - **Exact count preserved:** "HVN had **5,698** departures", equal to the artifact's integer (asserted). Fix 1 is verified.
+  - **No unsupported airport claims:** the phrase check found nothing (for example "general aviation", "gateway", "known for"), and a manual read of both replies found only tool-derived descriptions. Fix 3 is verified for this scenario.
+  - The response contract key set was asserted on the real path.
+- **Paid tests not re-run:** the Phase 4 smoke tests and the four-question suite (as instructed).
+
+### Phase 7 decision table (P-053 to P-058)
+| ID | Decision | Reason | Alternative considered | Remaining risk |
+|---|---|---|---|---|
+| P-053 | Tool artifact = **unmodified** engine envelope. The model gets a compact JSON view of the same envelope (no metric_details; whole numbers exact; fractions shortened). | Frontend fidelity (D-030), lower token cost | Send the full envelope to the model; have the model echo numbers | The view and the artifact must stay in sync (tests cover both) |
+| P-054 | Validation, scoring and BTS-outage errors are shown to the model verbatim; other errors are type-only | Self-correction without leaking internals | Type-only for every error | A verbatim message may echo user input back to the same user |
+| P-055 | Async `POST /api/chat` (`ainvoke`) inside a `create_app(service, chat_model)` factory | Non-blocking, testable offline with injected fakes | Sync endpoint; a global app only | Sync tools run in a threadpool under `ainvoke` |
+| P-056 | In-memory sessions: session id → (thread, turns, last seen). 2 h idle → new thread plus a notice. 30 turns → 409. | Implements P-016 without a database | A persistent store | Memory is lost on restart; single process only |
+| P-057 | The call limit is detected via the middleware's marker text and replaced by "Analysis incomplete…", with `status: incomplete` (P-059) | A clear user-facing state | `exit_behavior="error"` → HTTP error | Depends on LangChain's marker text (pinned 1.4.7, tested) |
+| P-058 | **Deferred:** `aggregate_metrics` (D-044) and session `rank_changes` through tools | Q1–Q4 first; no scope expansion | Build now (≤ 1 h) | Some follow-ups (for example "average growth of these") get a "not available" answer |
+
+### Remaining limitations and risks
+- The three fixes from the paid run were verified offline, and then **two of them (exact counts, hub classes) were verified with the real model** in the focused run. The prompt rule against general-knowledge claims held in this scenario, but it is a prompt-level control and is not guaranteed for every question.
+- **Superseded:** an earlier version of this list said "the three fixes from the paid run are verified offline only. A second paid run (about $0.16) would confirm them with the model." The focused verification above replaces that.
+- LLM prose can still include unsupported qualitative statements. Numbers on screen come from artifacts (Phase 8).
+- No `aggregate_metrics` (deferred). Answers rely on 6 domain tools.
+- Sessions are in memory only. Model latency was about 10–15 s per question in the paid run (54.8 s for 5 turns).
+- `smoke_tool.py` remains as a test-only tool (not registered with the aviation agent).
+
+---
+
 ## 4. Superseded / revisited decisions
 
 | Original | Original content (kept) | Status | Replaced by | Why it changed |
@@ -1552,7 +1683,7 @@ These are engine outputs for review, **not** hardcoded expectations.
 | A-027 | `claude-sonnet-5-5` generates and calls tools through LangChain on the configured account | **Verified (2026-10-30):** response `model_name = claude-sonnet-5-5`, 2/2 smoke tests pass |
 | A-026 | `claude-opus-5-5` is available to the configured account | **Verified (Models API, 2026-10-30):** `retrieve` OK. `claude-sonnet-5-5` and `claude-haiku-5-5` are also available. Message generation is still unverified (billing). |
 | A-025 | Credentials read by `langchain-anthropic` | **Verified (1.7.7 source + construction test, 2026-10-30):** `ANTHROPIC_API_KEY` is read. `ANTHROPIC_AUTH_TOKEN` is **not**. |
-| A-022 | `ToolMessage.artifact` is preserved on the messages returned by `agent.ainvoke` (and through the checkpointer) for `content_and_artifact` tools | **Verified (fake model, sync `invoke`, 2026-10-30):** the artifact is present on returned messages and persists in the thread state across turns. The contextvars fallback is not needed. Async `ainvoke` is to be confirmed in Phase 7. |
+| A-022 | `ToolMessage.artifact` is preserved on the messages returned by `agent.ainvoke` (and through the checkpointer) for `content_and_artifact` tools | **Verified, sync and async (2026-10-30):** sync `invoke` (Phase 4, fake model); **async `ainvoke` in Phase 7**, both via FastAPI with the fake model (offline) and with Sonnet 5.5 (paid run). The contextvars fallback is not needed. |
 
 ### 5.3 Why NOTES.md is ignored by Git, and the fix (P-025 → **approved as D-036**, applied to the working tree on 2026-10-30, commit pending with the user)
 > **Applied version:** see D-036. It also ignores `data/processed/` until the D-037 checks pass. The proposal text below is kept as written.

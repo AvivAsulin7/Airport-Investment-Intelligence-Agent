@@ -154,6 +154,7 @@ class AnalyticsService:
                                previous_ranks=previous_ranks)
         data = result.to_dict()
         data["candidate_group"] = {"query": region or airports, "interpretation": interpretation, "airports": codes,
+                                   "hub_classes": {a.code: a.hub or None for a in candidates},
                                    "eligibility": note, "hub_filter": hub_filter}
         scored = [r.metric for r in result.ranges]  # every requested KPI, usable or dropped
         data["metric_details"] = {a: {m: kpis[a][m].to_dict() for m in scored} for a in codes}
