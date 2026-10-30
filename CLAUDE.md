@@ -7,6 +7,8 @@ Key files:
 - `requirements.md`: requirements analysis (explicit requirements, interpretations, open questions, acceptance checklist, risks).
 - `NOTES.md`: decision log (decisions made, open decisions, assumptions to verify, rejected alternatives).
 - `implementation-plan.md`: phase roadmap (9 phases, statuses, and the 24-hour budget).
+- `data-sources-research.md`: verified public data sources (Phase 2).
+- `architecture.md`: design document required by the PDF (DRAFT until Phase 9).
 
 Note: `FDE Exam 2.pdf` is kept local only. It is excluded via `.gitignore` and must not be committed.
 
@@ -67,6 +69,34 @@ Note: `FDE Exam 2.pdf` is kept local only. It is excluded via `.gitignore` and m
 - At the end of a phase, suggest a commit message and list the files that should be included. Do not run the commit.
 - Read-only Git commands (`git status`, `git diff`, `git log`) are allowed.
 
-## 10. Decision logging
-- Record important technical decisions and rejected alternatives in `NOTES.md`, including the date and the reason.
-- When an assumption is verified or disproved, update `NOTES.md` and, if relevant, `requirements.md`.
+## 10. Decision journal (mandatory in every phase)
+- `NOTES.md` is the **Engineering Decision Journal**. Every phase (including Phases 4–9) must record each meaningful decision using the template in NOTES.md §0:
+  1. ID and title
+  2. Phase and status
+  3. Context
+  4. Alternatives with pros and cons
+  5. Selected approach
+  6. Why it was selected
+  7. Why the alternatives were rejected
+  8. Tradeoffs and risks
+  9. Validation / testing
+  10. Time and scope impact
+  11. A first-person interview line
+- **Status values:**
+  - **PROPOSED:** awaiting the user.
+  - **APPROVED:** explicit user approval only.
+  - **IMPLEMENTED:** only with verified code plus a test or check result.
+  - **REVISITED:** superseded. Keep the original text and point to its replacement.
+- **Historical accuracy:**
+  - Never rewrite or delete earlier decisions.
+  - Never reuse IDs.
+  - Label alternatives as *[discussed]* or *[retrospective]*.
+  - Never present a proposal as approved.
+  - Never record implementation results before code exists and has been checked.
+- **At the end of each phase**, update NOTES.md with:
+  - decisions made or proposed,
+  - rejected approaches,
+  - verified or disproved assumptions,
+  - outcomes (test results, measured timings) once they exist,
+  - new entries in the interview-preparation section where relevant.
+- When an assumption is verified or disproved, update `NOTES.md` and, if relevant, `requirements.md` and `architecture.md`.

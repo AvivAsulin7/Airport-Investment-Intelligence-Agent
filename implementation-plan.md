@@ -1,164 +1,198 @@
 # Implementation Plan: Phase Roadmap
 
-**Status:** approved roadmap (Phase 1). This is a **high-level phase roadmap** for organizing work and Git commits. It is **not** a finalized technical plan. No technology stack, data source, scoring formula, or AI framework has been selected (NOTES.md D-005).
+**Status:** updated 2026-10-30 at the close of Phase 3 (D-043). This plan reflects the approved architecture:
+- React + TypeScript + Vite (D-022)
+- Python + FastAPI (D-023)
+- LangChain (D-024)
+- A single-server review setup (D-034)
+- A live BTS API with labelled snapshots (D-016, D-017)
 
-**References:** `FDE Exam 2.pdf` (source of truth), `requirements.md`, `CLAUDE.md`, `NOTES.md`.
+The budget is the approved **24 h planning target with 3 h contingency** (D-031). Detailed design is in `architecture.md`, and the decisions are in `NOTES.md`.
 
 ## Ground rules
-- Phases run one at a time. **Each phase starts only after explicit user approval** (CLAUDE.md §2).
-- **Git commits are made only after the user has reviewed and approved a phase.** Each phase normally ends with one commit, which may be split if the user asks. The commit messages below are suggestions.
-- Phases 3–9 are **proposed** and will be revised after Phase 2 data research.
-- The time budget is about 24 hours in total (PDF: "Timeframe: 24 hours"). Time estimates are indicative only.
-- Work that does not fit is listed as known gaps, not rushed (PDF: "clarity, reasoning, and thoughtful design over completeness or polish").
+- One phase at a time. **Each phase starts only after explicit user approval** (CLAUDE.md §2).
+- **The user makes all Git commits manually** after reviewing a phase (D-026, CLAUDE.md §9). The commit messages below are suggestions.
+- Every phase updates the NOTES.md decision journal, including **actual vs. planned time** from Phase 4 onward (D-027, D-031).
+- **The four assignment scenarios (Q1–Q4) must remain viable whenever scope is reduced** (D-031). They are evaluation scenarios, not hardcoded paths (D-025).
+- Design statements are not implementation evidence. A decision is marked IMPLEMENTED only with code plus a check result.
 
-## Overview
+## Overview and budget
 
-| # | Phase | Status | Indicative time |
-|---|---|---|---|
-| 1 | Requirements & Project Setup | **Completed** (approved for finalization, D-012) | ~1 h |
-| 2 | Data Sources Research | **Completed** (approved, D-015) | ~2 h (time-boxed, D-009) |
-| 3 | Architecture & Scoring Design | **Approved / not started** (begins after the Phase 2 commit, D-015) | ~1.5 h |
-| 4 | Project Foundation | Pending | ~1 h |
-| 5 | Aviation Data Integration | Pending | ~3 h |
-| 6 | Deterministic Analytics Engine | Pending | ~3 h |
-| 7 | AI Agent & Conversation | Pending | ~4 h |
-| 8 | Chat UI & End-to-End Integration | Pending | ~3 h |
-| 9 | Testing, Documentation & Delivery | Pending | ~3 h |
-| | Buffer for blockers and rework | n/a | ~2.5 h |
-| | **Total** | | **~24 h** |
+| # | Phase | Status | Original h | Planned h |
+|---|---|---|---|---|
+| 1 | Requirements & Project Setup | **Completed** (D-012) | 1.0 | 1.0 |
+| 2 | Data Sources Research | **Completed** (D-015) | 2.0 | 2.0 |
+| 3 | Architecture & Scoring Design | **Completed**, pending the user's Phase 3 commit | 1.5 | 2.0 |
+| 4 | Project Foundation + smoke tests | Pending approval | 1.0 | 1.5 |
+| 5 | Aviation Data Integration | Pending | 3.0 | 3.0 |
+| 6 | Deterministic Analytics Engine | Pending | 3.0 | 2.5 |
+| 7 | LangChain Agent & Conversation | Pending | 4.0 | 3.0 |
+| 8 | React Chat UI & End-to-End Integration | Pending | 3.0 | 3.5 |
+| 9 | Testing, Documentation & Delivery | Pending | 3.0 | 2.5 |
+| | **Contingency** | Reserved | 2.5 | **3.0** |
+| | **Total** | | 24.0 | **24.0** |
+
+Estimates for Phases 1–3 are approximate (actual times were not tracked precisely). Phase 4 onward records actual times.
+
+## Essential requirements (never cut)
+1. **The live BTS public API is called at runtime** for traffic KPIs. Snapshots are labelled as datasets, never as APIs (FR-1, D-017).
+2. **Deterministic Python** for all KPIs, derived comparisons, normalization, and scoring, with unit tests (NFR-1, D-028, D-039).
+3. **A LangChain agent** using our Python tools, with Pydantic-validated inputs and conversational follow-ups via in-memory sessions (FR-0, FR-4, D-024, D-042).
+4. **A React chat UI** that renders Python-generated evidence (tables and cards), sources, windows, and warnings (NFR-2, D-030).
+5. **Q1–Q4 answerable end to end**, with disclosed assumptions, windows, and uncertainty (NFR-3, M-9).
+6. **`architecture.md` finalized** (scoring methodology, tradeoffs, AI usage) and a **README** with run steps (D-1, D-2).
+7. No secrets in Git. No processed or raw datasets in Git until the D-037 checks pass.
+
+## Optional cut list (cut in this order before touching anything essential; none of these breaks Q1–Q4)
+1. Voice (bonus, already excluded, P-018/D-040).
+2. Optional frontend Vitest/RTL test.
+3. `aggregate_metrics` generic tool (D-044; time-boxed ≤ 1 h, only after Q1–Q4 pass).
+4. No-key deterministic demo → banner only (D-032).
+5. `rank_changes` diff.
+6. "LA-area" alternative offer (LAX default stays).
+7. Q4 peer percentiles → plain values (the three-block Q4 answer stays).
+8. 3-month on-time data (not planned; 1 month stays).
 
 ---
 
 ## Phase 1: Requirements & Project Setup
-- **Status:** Completed. Approved for finalization (NOTES.md D-012).
-- **Goal:** Understand the assignment, separate explicit requirements from interpretations, and set the working rules.
+- **Status:** Completed (D-012).
 - **Deliverables:** `requirements.md`, `CLAUDE.md`, `NOTES.md`, `implementation-plan.md`.
-- **Acceptance criteria:**
-  - Every PDF requirement and all four example questions are captured.
-  - Ambiguities, risks, and the MVP checklist are documented.
-  - Working rules and the decision log exist.
-- **Dependencies:** None.
-- **Suggested commit:** `docs: add requirements analysis, working rules, decision log, and phase roadmap`
+- **Commit:** done (`21001b7`).
 
 ## Phase 2: Data Sources Research
-- **Status:** Completed and approved (NOTES.md D-015). Approved data decisions: D-016 to D-021.
-- **Goal:** Check, using real requests or downloads, which public aviation data can support Q1–Q4, and find blockers early.
-- **Deliverables:**
-  - `data-sources-research.md`: the data feasibility report.
-  - A feasibility matrix covering question × source × fields × coverage × freshness × access/limits × gaps.
-  - A feasibility verdict for each of Q1–Q4 (answerable / proxy only / not supportable).
-  - Updated assumptions A-001–A-010 in NOTES.md.
-- **Acceptance criteria:**
-  - Every claim about a source is backed by a real request, a sample, or official documentation, or is labelled unverified.
-  - Blockers (keys, rate limits, paywalls) are identified.
-  - Recommended sources and alternatives are presented for approval. Nothing is selected silently.
-- **Dependencies:** Phase 1.
-- **Suggested commit:** `docs: add public aviation data feasibility research`
+- **Status:** Completed (D-015).
+- **Deliverables:** `data-sources-research.md`, with NOTES.md updated. Approved data decisions: D-016 to D-021.
+- **Commit:** done (`3b91e03`).
 
 ## Phase 3: Architecture & Scoring Design
-- **Status:** Approved / not started. Begins after the user's Phase 2 commit (NOTES.md D-015). Must follow D-016 to D-021.
-- **Goal:** Decide the architecture, stack, data access approach, metric definitions, scoring methodology, and how responsibilities split between AI and deterministic code. Decisions are based on Phase 2 evidence.
-- **Deliverables:**
-  - A design proposal: options, tradeoffs, and a recommendation for each major decision.
-  - Metric definitions (congestion, long haul, unmet-demand proxy, expansion indicator).
-  - Scoring formulas and weights.
-  - Approved decisions recorded in NOTES.md.
-  - First draft of `architecture.md`, the design/architecture document required by the PDF (requirements.md D-2). It is finalized in Phase 9.
-- **Acceptance criteria:**
-  - The remaining open decisions in NOTES.md (O-002 to O-006 and O-009 to O-014) are resolved or explicitly deferred, with user approval.
-  - Each metric can be computed from data verified in Phase 2.
-  - LLM and deterministic responsibilities are clearly separated (CLAUDE.md §5).
-- **Dependencies:** Phase 2.
-- **Suggested commit:** `docs: add architecture and scoring methodology design`
+- **Status:** Completed. The design is approved (D-022 to D-044). The user's Phase 3 commit is pending.
+- **Deliverables:** `architecture.md` (DRAFT rev 4; finalized in Phase 9), the NOTES.md decision journal, `.gitignore` fix (D-036), the CLAUDE.md journal rule, and this plan.
+- **Open for confirmation:** P-029 (precise field and edge-case definitions), P-030 (aggregate tool design), P-022 (default model), and P-028 (fallback order). These are checked in Phase 4–7 as noted below.
+- **Suggested commit:** `docs: finalize phase 3 architecture, scoring design, and decision journal`
 
-## Phase 4: Project Foundation
-- **Status:** Pending (proposed).
-- **Goal:** Set up a minimal project skeleton based on the approved design.
+## Phase 4: Project Foundation + Smoke Tests (1.5 h)
+- **Goal:** a minimal skeleton, plus empirical verification of the risky integration assumptions **before** building on them.
 - **Deliverables:**
-  - Project structure and a minimal dependency list.
-  - Configuration that keeps secrets out of git (env template with placeholders, ignore rules).
-  - A basic test setup.
-  - Run instructions (a stub is enough at this stage).
+  - `backend/` (FastAPI app with `/api/health`, settings from env, pytest setup).
+  - `frontend/` (Vite React-TS template, `/api` dev proxy, typed API client stub).
+  - FastAPI serving the built SPA (D-034).
+  - `.env.example` with placeholders only.
+  - Pinned dependency versions.
+  - A README stub.
+- **Smoke tests (record the results in NOTES.md):**
+  1. **Model ID and SDK compatibility** (D-033): `ChatAnthropic(model=LLM_MODEL)` accepts the configured ID. One `create_agent` run with one tool call succeeds. Apply the fallback order P-028 if it fails, and record why.
+  2. **Artifact propagation** (A-022): a `content_and_artifact` tool's artifact is present on the returned `ToolMessage`. Otherwise switch to the `contextvars` collector.
+  3. **Memory** (A-019): a 2-turn conversation with the same `thread_id` recalls turn-1 tool output, and thinking blocks round-trip without error.
+  4. **Validation errors** (A-018): invalid tool args → observed default behaviour. Confirm the `@wrap_tool_call` middleware returns a structured error.
+  5. **Loop limit** (A-020): `recursion_limit` stops a looping run as expected.
+  6. **Fake chat model** (A-021): available for no-LLM API tests.
+  7. **Live BTS API** reachable from the backend (`/api/health`).
 - **Acceptance criteria:**
-  - The project installs and runs an empty or "hello" entry point.
-  - Tests run.
+  - The backend starts, and `/api/health` returns 200.
+  - `npm run build` succeeds, and the SPA is served by FastAPI.
+  - pytest runs.
+  - Smoke-test outcomes are documented, including failures and the fallback chosen.
   - No secrets are tracked.
-  - Only the dependencies justified in Phase 3 are added.
-- **Dependencies:** Phase 3.
-- **Suggested commit:** `chore: set up project foundation and configuration`
+- **Dependencies:** Phase 3 commit and user approval.
+- **Suggested commit:** `chore: set up FastAPI + React foundation and LangChain smoke tests`
 
-## Phase 5: Aviation Data Integration
-- **Status:** Pending (proposed).
-- **Goal:** Retrieve and normalize data from the approved public sources (PDF FR-1).
+## Phase 5: Aviation Data Integration (3.0 h)
+- **Goal:** retrieve and prepare all approved data with provenance.
 - **Deliverables:**
-  - Data access modules for each source.
-  - Airport and region reference handling (entity resolution).
-  - The caching or snapshot approach, if approved (O-007).
-  - Source and freshness metadata attached to the data.
+  - **BTS API client** (`r495-tyji`): whitelisted SoQL, timeout and retry, TTL cache, labelled recorded fallback.
+  - **`scripts/build_snapshots.py`**: on-time July 2026 (download verified in Phase 2), T-100 Segment All Carriers **July 2026, subject to availability verification (A-015)**, FAA CY2025 enplanements, and an optional OurAirports subset (A-014). Raw files go to the gitignored `data/raw/`. Small processed files plus `manifest.json` (URL, retrieval date, data period, checksum) go to the gitignored `data/processed/` (D-037).
+  - Snapshot loader with manifest validation.
+  - Airport and region resolver (FAA region / state, primary airports; "LA" → LAX with a note, P-011).
+  - Licensing and provenance check notes for A-011 and A-014 (a prerequisite for ever committing snapshots).
 - **Acceptance criteria:**
-  - Real data is retrieved for the airports needed by Q1–Q4, as far as Phase 2 found feasible.
-  - Errors and missing data are handled explicitly.
-  - Data period and source are kept for citation in answers.
-- **Dependencies:** Phases 3 and 4.
-- **Suggested commit:** `feat: integrate public aviation data sources`
+  - Live API rows are retrieved for the Q1–Q4 airports.
+  - Snapshots are built and validated.
+  - **If July 2026 T-100 is unavailable, an alternative month is used and the window mismatch is reported clearly** (D-040).
+  - Data-layer tests pass (recorded fixtures, no network).
+- **Dependencies:** Phase 4.
+- **Suggested commit:** `feat: add BTS API client, snapshot builder, and airport resolver`
 
-## Phase 6: Deterministic Analytics Engine
-- **Status:** Pending (proposed).
-- **Goal:** Implement the approved metrics and the scoring/ranking/comparison logic in code (PDF: "deterministic scoring or ranking logic").
+## Phase 6: Deterministic Analytics Engine (2.5 h)
+- **Goal:** implement the approved formulas (D-039; definitions P-029) as pure Python.
 - **Deliverables:**
-  - Metric calculations.
-  - Ranking and comparison functions.
-  - Structured outputs that include inputs, definitions, and limitations.
-  - Unit tests.
+  - Metric registry.
+  - KPI functions (§6 of architecture.md).
+  - Scoring v1:
+    - candidate-group min-max,
+    - minimum 3 values per KPI,
+    - coverage-weighted score with the 0.60 threshold,
+    - `low_sample` warnings (D-029),
+    - edge cases (§7.1b),
+    - tie-break,
+    - `rank_changes`.
+  - Comparison (with derived differences, D-028).
+  - Long-haul share (P-012).
+  - Demand-pressure profile (P-013).
+  - Confidence rules.
 - **Acceptance criteria:**
-  - The same inputs always produce the same outputs.
-  - Formulas match the design document.
-  - Tests cover the core scoring.
-  - No LLM is involved in producing any score or metric value.
-- **Dependencies:** Phase 5 (and the Phase 3 formulas).
-- **Suggested commit:** `feat: add deterministic scoring and comparison engine`
+  - Unit tests pass, including the architecture §9 worked examples:
+    - B 55.0 / A 51.1 / D 50.0 / C 45.0
+    - C 70.0 / A 54.7 / D 50.0 / B 30.0
+    - long-haul 9.5% / 26.8%
+    - delay rates 25.0% / 25.0%
+  - The edge cases in §7.1b are tested.
+  - No LLM or LangChain imports in the engine.
+- **Dependencies:** Phase 5 (data accessors). It can start in parallel with fixtures.
+- **Suggested commit:** `feat: add deterministic KPI, scoring, and comparison engine`
 
-## Phase 7: AI Agent & Conversation
-- **Status:** Pending (proposed).
-- **Goal:** Add an AI agent that interprets questions, calls the data and analytics tools, explains its reasoning, and supports follow-ups (PDF FR-0, FR-3, FR-4).
+## Phase 7: LangChain Agent & Conversation (3.0 h)
+- **Goal:** a LangChain agent that composes our tools to answer Q1–Q4 and analogous questions.
 - **Deliverables:**
-  - Agent orchestration.
-  - Tool interfaces to the Phase 5 and Phase 6 modules.
-  - Conversation memory.
-  - Grounding rules (numbers only come from tools).
-  - Behaviour for out-of-scope questions and for stating assumptions and uncertainty.
+  - `create_agent` with `ChatAnthropic` (configurable model, D-033).
+  - Thin `@tool` wrappers with Pydantic `args_schema` and `content_and_artifact` (D-042).
+  - `@wrap_tool_call` error middleware.
+  - `InMemorySaver` sessions (P-016).
+  - System prompt: grounding, D-021 wording, out-of-scope behaviour (P-017), no LLM arithmetic.
+  - `/api/chat` with evidence extraction (architecture §10.1).
+  - `/api/demo/{scenario}` no-key demo (D-032).
+  - **Stretch, ≤ 1 h, only after Q1–Q4 pass:** `aggregate_metrics` with the session evidence store (D-044, P-030). Otherwise deferred and documented.
 - **Acceptance criteria:**
-  - Q1–Q4 produce grounded responses, or honest statements of limitation (requirements.md M-9, M-10).
-  - Follow-ups work in a multi-turn session (M-6).
-  - Assumptions, data freshness, and scope are stated (M-8).
+  - Fake-model tests: single, parallel, and failing tool calls. Evidence equals direct engine output. A second turn returns only that turn's evidence (D-041).
+  - Real-model runs of Q1–Q4 return evidence and disclosures.
+  - Follow-ups work.
 - **Dependencies:** Phase 6.
-- **Suggested commit:** `feat: add AI agent with tool use and conversational follow-ups`
+- **Suggested commit:** `feat: add LangChain agent, tools, sessions, and chat API`
 
-## Phase 8: Chat UI & End-to-End Integration
-- **Status:** Pending (proposed).
-- **Goal:** Give reviewers a chat interface to use the agent end to end (PDF: "chat interface"). Voice is a bonus only if time allows.
+## Phase 8: React Chat UI & End-to-End Integration (3.5 h)
+- **Goal:** the reviewer-facing chat with typed evidence rendering.
 - **Deliverables:**
-  - A chat interface of the approved form (O-009).
-  - End-to-end wiring.
-  - Optional voice, only if explicitly approved and time remains.
+  - ChatPanel and MessageBubble.
+  - `EvidenceRenderer` (ranking, comparison, long-haul, demand profile, traffic, operations, airports, metrics, aggregate, error).
+  - SourcesList (API live / API fallback / dataset snapshot).
+  - Warnings and confidence badges.
+  - ModeBanner (agent vs. labelled deterministic demo).
+  - Preset buttons in demo mode, with chat input disabled.
+  - Shared JSON evidence fixtures type-checked by `tsc`.
 - **Acceptance criteria:**
-  - A reviewer can start the app and have a multi-turn conversation (M-7).
-  - Q1–Q4 run end to end through the UI.
+  - Q1–Q4 plus one analogous question each run end to end through the UI with the built SPA served by FastAPI.
+  - Follow-ups work.
+  - The no-key demo is clearly labelled and non-conversational.
 - **Dependencies:** Phase 7.
-- **Suggested commit:** `feat: add chat interface and end-to-end integration`
+- **Suggested commit:** `feat: add React chat UI with evidence rendering`
 
-## Phase 9: Testing, Documentation & Delivery
-- **Status:** Pending (proposed).
-- **Goal:** Verify the MVP against the acceptance checklist and complete the deliverables.
+## Phase 9: Testing, Documentation & Delivery (2.5 h)
+- **Goal:** verify against the requirements.md §7.1 checklist and finish the deliverables.
 - **Deliverables:**
-  - Final run of the tests and the example questions.
-  - Final `architecture.md`, started in Phase 3, covering scoring methodology, key tradeoffs, and where/how AI is used.
-  - README with setup and run steps.
-  - A list of known gaps and future work.
-  - Final NOTES.md update.
+  - Full test run.
+  - The scenario evaluation (Q1–Q4 plus analogous questions plus follow-ups) recorded in NOTES.md.
+  - **Final `architecture.md`.**
+  - README:
+    - setup,
+    - snapshot build time (~6 min per on-time month),
+    - key configuration,
+    - the no-key demo,
+    - known limitations.
+  - A known-gaps list.
+  - The final NOTES.md (outcomes and interview preparation).
 - **Acceptance criteria:**
-  - Every mandatory item M-1–M-15 in requirements.md §7.1 is verified, or explicitly listed as a gap.
-  - No secrets are in the repository.
+  - M-1 to M-15 are verified or listed as gaps.
   - A fresh setup runs from the README.
+  - No secrets, and no datasets committed unless D-037 is satisfied.
 - **Dependencies:** Phase 8.
-- **Suggested commit:** `docs: finalize design document, README, and delivery checks`
+- **Suggested commit:** `docs: finalize architecture, README, and delivery checks`
