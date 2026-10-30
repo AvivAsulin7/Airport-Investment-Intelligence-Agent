@@ -23,8 +23,8 @@ The budget is the approved **24 h planning target with 3 h contingency** (D-031)
 | 1 | Requirements & Project Setup | **Completed** (D-012) | 1.0 | 1.0 |
 | 2 | Data Sources Research | **Completed** (D-015) | 2.0 | 2.0 |
 | 3 | Architecture & Scoring Design | **Completed**, pending the user's Phase 3 commit | 1.5 | 2.0 |
-| 4 | Project Foundation + smoke tests | **Approved** (offline smoke tests). Real-LLM smoke tests **BLOCKED by Anthropic account credit balance** (HTTP 400). Key valid. `claude-opus-5-5` available (Models API). | 1.0 | 1.5 |
-| 5 | Aviation Data Integration | Pending | 3.0 | 3.0 |
+| 4 | Project Foundation + smoke tests | **Approved.** Real-LLM smoke tests **PASS with `claude-sonnet-5-5`** (2026-10-30, D-047), after earlier blocks for no key and then no credits. | 1.0 | 1.5 |
+| 5 | Aviation Data Integration | **Implemented, awaiting final approval** (P-038 to P-045; Sonnet default D-048) | 3.0 | 3.0 |
 | 6 | Deterministic Analytics Engine | Pending | 3.0 | 2.5 |
 | 7 | LangChain Agent & Conversation | Pending | 4.0 | 3.0 |
 | 8 | React Chat UI & End-to-End Integration | Pending | 3.0 | 3.5 |
@@ -78,7 +78,7 @@ Estimates for Phases 1–3 are approximate (actual times were not tracked precis
   - `backend/` (FastAPI app with `/api/health`, settings from env, pytest setup).
   - `frontend/` (Vite React-TS template, `/api` dev proxy, typed API client stub).
   - FastAPI serving the built SPA (D-034).
-  - `.env.example` with placeholders only.
+  - `.env.example` with placeholders only. *(Later removed in the Phase 5 review, D-046. Variables are documented in README.md and the root `.env` is the only local config file.)*
   - Pinned dependency versions.
   - A README stub.
 - **Smoke tests (record the results in NOTES.md):**
@@ -99,6 +99,11 @@ Estimates for Phases 1–3 are approximate (actual times were not tracked precis
 - **Suggested commit:** `chore: set up FastAPI + React foundation and LangChain smoke tests`
 
 ## Phase 5: Aviation Data Integration (3.0 h)
+- **Status (2026-10-30):** implemented and awaiting user review. Details are in NOTES.md §3c.
+  - The live BTS API client and snapshots are built for July 2026 (T-100 July 2026 available, A-015 verified).
+  - The snapshots exactly match the live API for the same month (ANC, SFO, SNA).
+  - Tests: 48 offline passed (including 4 against the real snapshots), and 2 live passed. The real-LLM tests need `RUN_LLM_TESTS=1`. They **pass with `claude-sonnet-5-5`** (2026-10-30).
+  - The builder lives at `backend/scripts/build_snapshots.py` (P-042). OurAirports is deferred (P-043).
 - **Goal:** retrieve and prepare all approved data with provenance.
 - **Deliverables:**
   - **BTS API client** (`r495-tyji`): whitelisted SoQL, timeout and retry, TTL cache, labelled recorded fallback.
@@ -156,7 +161,8 @@ Estimates for Phases 1–3 are approximate (actual times were not tracked precis
 - **Acceptance criteria:**
   - Fake-model tests: single, parallel, and failing tool calls. Evidence equals direct engine output. A second turn returns only that turn's evidence (D-041).
   - **Async path:** if `/api/chat` uses `agent.ainvoke`, repeat the artifact-extraction and memory tests on the async path. Phase 4 verified the synchronous `invoke` path only (A-022).
-  - **Real-model smoke tests** (`pytest -m llm`) pass with the configured `LLM_MODEL`. In Phase 4 they were BLOCKED, first for lack of an API key, then by the account's credit balance (HTTP 400). Re-run them as soon as credits are added, ideally **before** Phase 7 work starts.
+  - **Real-model smoke tests** (`RUN_LLM_TESTS=1 pytest -m llm`) pass with the configured `LLM_MODEL`. **Done 2026-10-30 with `claude-sonnet-5-5`: 2/2 PASS** (tool call, artifact, memory). Re-run only if the model or the LangChain versions change.
+  - **Model for Phase 7 scenario runs:** `claude-sonnet-5-5` (D-047, cost). Keep the paid scenario runs to the minimum needed (Q1–Q4 plus one analogous question each, plus follow-ups).
   - Real-model runs of Q1–Q4 return evidence and disclosures.
   - Follow-ups work.
 - **Dependencies:** Phase 6.

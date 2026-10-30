@@ -62,7 +62,7 @@
 | Backend | Python + FastAPI | `fastapi` 0.162.0 (PyPI, Python ≥ 3.10). Local Python 3.13. | Uvicorn server. Pydantic v2 schemas. |
 | Agent orchestration | LangChain v1, `create_agent` | `langchain` 1.4.7, `langchain-core` 1.7.3 (PyPI). `from langchain.agents import create_agent` (docs). | `langchain` depends on `langgraph<1.3` (verified `requires_dist`), so LangGraph is installed **transitively**. We use only its `InMemorySaver` checkpointer, not custom graphs. |
 | LLM integration | `langchain-anthropic` `ChatAnthropic` | `langchain-anthropic` 1.7.7 (requires `anthropic>=0.120.0`). `anthropic` 2.3.0. | Supports `thinking={"type":"adaptive"}` and `effort=` (docs: requires `langchain-anthropic>=1.5.3`). |
-| Model | `claude-opus-5-5` (default) **[PROPOSED P-022]** | Exact ID verified on the Anthropic models overview page. Also used in LangChain's Anthropic integration docs. | Configurable through env. |
+| Model | **`claude-sonnet-5-5` (default, APPROVED D-048)**. Originally proposed `claude-opus-5-5` (P-022, revisited). | Real tool-calling and memory smoke tests pass with Sonnet 5.5 (2026-10-30). | Configurable through `LLM_MODEL`. |
 | Data | `httpx` (BTS API), stdlib `csv`/`json`/`zipfile` | — | No pandas. |
 | Tests | `pytest` (backend). TypeScript type-check + build (frontend). Optional Vitest. | — | §12 |
 
@@ -377,7 +377,7 @@ Analogous questions also work, for example "rank Florida airports", "compare BOS
 > **Scores are relative to the candidate group.** A score of 100 on a KPI means "highest in this group", not "high in absolute terms".
 
 ### 7.1 Eligibility
-FAA **primary** airports (`S/L = P`) in the requested region. A region is resolved by FAA region code or by US state(s). New England = FAA region `NE`, 15 airports in CY2025 (verified). Non-primary airports are excluded, with a note. If the user supplies an explicit airport list, that list is the group.
+FAA **primary** airports (`S/L = P`) in the requested region. A region is resolved by FAA region code or by US state(s). New England = FAA region `NE`, **16** primary airports in CY2025. This was corrected in Phase 5 from an earlier miscount of 15 (NOTES.md P-040). Non-primary airports are excluded, with a note. If the user supplies an explicit airport list, that list is the group.
 
 ### 7.1a Exact scoring specification (v1)
 **Notation:**
@@ -617,18 +617,18 @@ The user says "focus on growth". The tool is called with pax growth .50, flight 
 - The rev 2 "weights form" is **dropped**, to keep the demo clearly non-conversational and minimal.
 - **Cost:** about 0.5–1 h. In the cut list it can shrink to "banner only", but only after the essential scenarios work in agent mode.
 
-## 12. Model selection (P-022) [PROPOSED; revises P-003]
+## 12. Model selection (**APPROVED D-048: default `claude-sonnet-5-5`**; originally P-022 proposed Opus, now revisited)
 | Model (verified ID) | Quality | Latency (vendor relative) | Price per MTok in/out | Fit |
 |---|---|---|---|---|
-| `claude-opus-5-5` | Highest of the three | Moderate | $4 / $20 | Default: best tool selection and caveat discipline |
-| `claude-sonnet-5-5` | High | Fast | $2 / $10 | Good alternative if demo latency matters |
+| `claude-opus-5-5` | Highest of the three | Moderate | $4 / $20 | Optional via `LLM_MODEL` when reasoning quality matters more than cost |
+| `claude-sonnet-5-5` | High | Fast | $2 / $10 | **Default (D-048):** lower cost. Real smoke tests pass. |
 | `claude-haiku-5-5` | Lower | Fastest | from $0.10 / $0.50 | Not recommended for multi-tool reasoning |
 
-- **Configuration:** `LLM_PROVIDER=anthropic`, `LLM_MODEL=claude-opus-5-5`, `LLM_EFFORT=medium` (the model's default is medium; set explicitly). Thinking is adaptive and always on for Opus 5.5.
+- **Configuration (as implemented):** `LLM_MODEL` (default `claude-sonnet-5-5`), `LLM_EFFORT=medium` (set explicitly; Sonnet 5.5's API default is `high`), `LLM_MAX_TOKENS`, `AGENT_MAX_MODEL_CALLS`. The provider is Anthropic only. The `LLM_PROVIDER` variable sketched earlier was **not** implemented.
 - **Provider swap:** `init_chat_model` makes swapping technically possible, but **only Anthropic will be tested**.
 - **D-033 (approved):** the model stays configurable. The exact model ID and SDK compatibility are verified in the **Phase 4 smoke test**: one `create_agent` run with one tool call, a two-turn follow-up through `InMemorySaver`, and artifact capture.
-- **Documented fallback order [PROPOSED, P-028]:**
-  1. `claude-opus-5-5` (default).
+- **Documented fallback order [P-028, superseded by D-048 since Sonnet is now the default; kept for history]:**
+  1. `claude-opus-5-5` (default at the time).
   2. If the failure is model-specific (for example thinking-block round-trip or a parameter rejection): switch `LLM_MODEL=claude-sonnet-5-5` and re-run the smoke test.
   3. If the failure is in the integration (a LangChain or `langchain-anthropic` bug): pin the last working `langchain-anthropic` version, or upgrade within the major version, and re-test.
   - Every switch is recorded in NOTES.md with the error observed.
@@ -637,8 +637,8 @@ The user says "focus on growth". The tool is called with pax growth .50, flight 
 
 ## 13. Security and reliability
 - **Secrets:**
-  - `.env` and `.env.*` are gitignored, with `!.env.example` allowed (D-036; `.gitignore` edited, the commit is pending with the user). `data/raw/` and `data/processed/` are also ignored until the D-037 checks pass.
-  - `.env.example` has placeholders only.
+  - `.env` and `.env.*` are gitignored (D-036). `data/raw/` and `data/processed/` are also ignored until the D-037 checks pass.
+  - Local configuration uses only the root `.env`. There is no `.env.example`: the variables are documented in README.md (D-046, Phase 5 review).
   - Keys are never logged or returned.
   - Staged files are checked before commits (CLAUDE.md §8).
 - **Inputs:**

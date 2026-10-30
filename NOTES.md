@@ -117,6 +117,15 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | 2026-10-30 | D-045 | `NOTES.md` must not be gitignored: it is an essential tracked journal (rule removed) | 4 (cleanup) | APPROVED; `.gitignore` edited, commit pending with the user | |
 | 2026-10-30 | P-037 | `llm_configured` checks `ANTHROPIC_API_KEY` only (`ANTHROPIC_AUTH_TOKEN` is not read by langchain-anthropic) | 4 (cleanup) | PROPOSED (implemented, tests pass) | |
 | 2026-10-30 | — | Real-model smoke tests run after the key was added: **FAIL with HTTP 400 "credit balance too low"** (account-level). Model ID verified available via the Models API. No model switch (P-028 not triggered). | 4 (verification) | Observed | |
+| 2026-10-30 | — | Phase 4 approved; Phase 5 started. Real-LLM tests stay BLOCKED by credits, and no retries until the user confirms. | 4→5 | APPROVED | |
+| 2026-10-30 | P-038 to P-044 | Phase 5 data-layer choices: counts not rates, explicit classes, data-derived regions, labelled fallback, builder location and caching, no OurAirports, paid-test opt-in | 5 | PROPOSED (implemented, tests pass) | |
+| 2026-10-30 | — | **Incident:** 4 paid LLM requests sent against instruction (all rejected, HTTP 400 credits). Fixed by P-044. | 5 | Observed | |
+| 2026-10-30 | D-046 | Only the root `.env` for local config; `.env.example` removed (it was never tracked); variables documented in README | 5 (review) | APPROVED; `.gitignore` and README changes pending the user's commit | |
+| 2026-10-30 | — | A-016 verified (statute miles); snapshots reproducible from cached raw files (identical SHA-256) | 5 (review) | Verified | |
+| 2026-10-30 | P-045 | Raw-download sizes and SHA-256 recorded in the manifest | 5 (review) | PROPOSED (implemented) | |
+| 2026-10-30 | D-047 | Use `claude-sonnet-5-5` (via `.env`) to reduce cost; supersedes P-022's Opus default for project runs | 5→6 | APPROVED | |
+| 2026-10-30 | — | Real-LLM smoke tests **PASS** with `claude-sonnet-5-5` (1 paid run, 2 tests, about $0.008). Credits added by the user. | 5→6 | Verified | |
+| 2026-10-30 | D-048 | Code default model `claude-sonnet-5-5` (`LLM_MODEL` still overrides); README and architecture updated | 5 (close) | APPROVED; implemented, offline tests pass (49) | |
 
 ---
 
@@ -1056,6 +1065,246 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 
 ---
 
+## 3c. Phase 5: Aviation Data Integration (2026-10-30), implementation journal
+
+> These are implementation choices within the approved design (D-016 to D-019, D-028, D-037, D-040). They are labelled PROPOSED until the user reviews them. Results come only from commands actually run.
+> **The real-LLM tests remain BLOCKED by insufficient Anthropic API credits** (HTTP 400, account-level, Phase 4 verification). This is not a confirmed code defect. No paid LLM requests were retried in Phase 5 (user instruction).
+
+### What was built
+| Module | Role | Source type |
+|---|---|---|
+| `app/data/validation.py` | Airport codes (regex `^[A-Z0-9]{3}$`, max 30, dedupe), `YYYY-MM` months and ranges, **explicit** T-100 service classes (F/G/L/P; passenger = F+L, cargo-only = G+P) | — |
+| `app/data/provenance.py` | `Provenance` (source_type, name, url, retrieval_method, retrieved_at, observation_period, limitations, cache_status) attached to every result | — |
+| `app/data/bts_api.py` | **Live** BTS SODA client: `latest_month()` and `fetch_monthly_traffic(airports, start, end)` (passengers, seats, departures, domestic and international departures, freight). Whitelisted SoQL, 1 retry, 1 h in-memory cache, labelled recorded fallback. Missing months reported, never filled. | `public_api` (or `recorded_api_fallback`) |
+| `app/data/sources/faa_enplanements.py` | Stdlib XLSX reader plus a header-driven parser (detects which CY columns are current and prior) | snapshot |
+| `app/data/sources/bts_ontime.py` | Aggregates the national monthly on-time ZIP into **counts and sums** per origin (departures) and per destination (arrival causes), using the P-029 definitions | snapshot |
+| `app/data/sources/bts_t100.py` | TranStats form download (ASP.NET POST) plus aggregation by (origin, dest, dest_country, class) over carriers | snapshot |
+| `backend/scripts/build_snapshots.py` | Downloads raw files to `data/raw/` (reused if present), writes small CSVs and `manifest.json` (provenance + SHA-256) to `data/processed/`. T-100 falls back to earlier months if the target is unavailable and labels this. Records a 24-month API response for primary airports as the outage fallback. | — |
+| `app/data/snapshots.py` | `SnapshotStore`: loads the manifest and verifies checksums | — |
+| `app/data/airports.py` | `AirportReference`: by code, FAA region, or state (data-derived membership, primary-only by default), alias `LA` → LAX with a note (P-011), city/name search | snapshot |
+| `app/data/operations.py`, `app/data/routes.py` | Typed accessors. A missing airport → `None`, never zeros. Routes **require** explicit service classes. | snapshot |
+| `app/data/layer.py` | `load_data_layer(settings)` wires everything for Phases 6–7 | — |
+
+### P-038: Snapshots store counts, not rates
+- **Context:** Phase 6 owns the KPI formulas (D-028, D-039).
+- **Alternatives** *[retrospective]*:
+  - Store precomputed delay rates. Con: puts formula logic in the builder and loses the denominators for coverage and small-sample warnings.
+  - *[selected]* Store numerators, denominators, and sums (for example `depdel15_eligible`, `depdel15_delayed`, `taxi_out_n`, `taxi_out_sum_min`).
+- **Why:** keeps fetching and parsing separate from analytics. The engine can apply `min_flights_warning` (D-029).
+- **Interview line:** "The data layer hands the engine raw counts. Every rate is computed in one tested place."
+
+### P-039: Explicit service classes in the route accessor
+- `RouteData.segments_from(origin, service_classes)` **requires** classes, and an empty list is an error. `classes_present()` discloses each class's departures.
+- **Alternative** *[retrospective]*: default to all classes. Con: silently mixes cargo into the long-haul % (A-008, ANC).
+- **Validation:** `test_routes_require_explicit_classes_and_filter_them`, and `test_routes_keep_passenger_and_cargo_separate` on real data.
+- **Interview line:** "You can't ask for routes without saying passenger, cargo, or both, so the cargo-heavy Anchorage case can't be mixed by accident."
+
+### P-040: Region resolution from data, codes prefer states
+- FAA region membership comes from the RO column. The state list is shown in the interpretation.
+- Two-letter codes resolve as **US states** first, because `NE` is both the FAA New England region and Nebraska, and `AL` is both Alaskan and Alabama. Full region names ("New England") resolve as regions.
+- **Alternatives** *[retrospective]*:
+  - A hardcoded New England airport list. Con: brittle, and violates the generality requirement.
+  - Region codes first. Con: "NE" would surprise users who mean Nebraska.
+- **Validation:** `test_region_resolution_uses_data_and_primary_filter`, `test_two_letter_ambiguous_code_prefers_state`, `test_new_england_resolves_from_data` (real).
+- **Correction:** the FAA CY2025 file has **16** New England primary airports (BOS, BDL, PVD, PWM, HVN, BTV, MHT, BGR, ACK, ORH, PSM, MVY, HYA, PQI, BID, WST). Earlier documents (data-sources-research.md §2.4, architecture §7.1) said 15, which was a counting error in Phase 2. The data is unchanged; only the earlier count was wrong.
+
+### P-041: Recorded API fallback, labelled
+- The builder records a 24-month live API response for FAA primary airports to `data/processed/bts_api_fallback.json` (gitignored).
+- The client uses it only after the live call **and** one retry fail. It is labelled `source_type="recorded_api_fallback"`, `cache_status="recorded_fallback"`, with its recording time plus a warning.
+- **Alternatives** *[retrospective]*:
+  - No fallback. Con: a demo outage breaks every traffic answer.
+  - A silent fallback. Con: misrepresents the source (D-017).
+- **Validation:** `test_retries_once_then_uses_labelled_recorded_fallback`, `test_outage_without_fallback_raises`.
+
+### P-042: Builder location and caching
+- `backend/scripts/build_snapshots.py`. architecture.md §3.2 sketched `scripts/` at the repo root; it was placed under `backend/` so it can import `app.*` without packaging.
+- Raw downloads are cached on disk with a `.retrieved_at` stamp, and re-runs reuse them. The API cache is in memory (1 h TTL). No Redis or DB.
+- **Interview line:** "Expensive downloads happen once and are stamped with when they were fetched; reruns are reproducible from the cache."
+
+### Build results (`build_snapshots.py --month 2026-07`, run 2026-10-30, exit 0)
+| Dataset | Source type | Observation period | Retrieved (UTC) | Size |
+|---|---|---|---|---|
+| FAA CY2025 commercial-service enplanements | public_dataset_snapshot | CY2025 (prior column CY2024) | 2026-10-30 12:49:58 | 519 airports (402 primary) |
+| BTS on-time performance | public_dataset_snapshot | 2026-07 | 2026-10-30 12:54:11 | 352 origin + 352 destination airports (from the 33,075,361-byte ZIP) |
+| BTS T-100 Segment (All Carriers) | public_dataset_snapshot | **2026-07 (target month available; no fallback month used)** | 2026-10-30 12:54:30 | 21,176 route/class rows (569 KB ZIP) |
+| Recorded BTS API response | recorded_api_fallback | 2024-08..2026-07 | 2026-10-30 12:54:36 | 9,315 airport-months, 402 primary airports |
+| **Live BTS API** (`r495-tyji`) | public_api | Queried at request time. Latest month = 2026-07. | per request | — |
+
+### Cross-source consistency checks (run 2026-10-30)
+- **T-100 snapshot = live API for July 2026, across all classes:**
+  - ANC: 9,087 departures / 393,566 passengers / 493,315 seats in both.
+  - SFO: 17,307 / 2,444,332 / 2,948,939 in both.
+  - SNA: 4,528 / 486,619 / 627,364 in both.
+  - This confirms A-012 / A-023 for July 2026 as well as Dec 2025.
+- **Class mix (July 2026):**
+  - ANC: F 4,958, G 2,813, L 421, P 895. Cargo-only G+P = 3,708 of 9,087.
+  - SFO: G+P = 158 of 17,307.
+  - SNA: no P.
+  - This is evidence, not a scenario answer.
+- **On-time SFO July 2026:** 13,841 rows, 159 cancelled, 92 diverted, 13,682 delay-eligible. This matches the Phase 2 probe and the P-029 rule (eligible = non-cancelled with `DepDel15` present).
+
+### Test results (Phase 5)
+- `pytest` (offline): **48 passed**.
+  - New: validation (13), BTS client via `httpx.MockTransport` (8), source parsers (5), snapshot store and accessors (8), real-snapshot checks (4; these skip if the snapshots are not built).
+- `pytest -m live`: **2 passed** (connectivity, plus a 24-month live window for 2 airports with no missing months).
+- `pytest -m llm`: **BLOCKED (credits).**
+
+### Incident: paid LLM requests sent against the user's instruction (2026-10-30)
+- **What happened:** the user said not to retry paid LLM requests until credits are confirmed. The assistant included `pytest -m llm` in a combined test command (2 requests), then re-ran it to read the error (2 more requests).
+- **Result:** **4 requests in total, all rejected** with HTTP 400 "Your credit balance is too low…". No generation occurred.
+- **Root cause:** the `llm` marker only skipped when no key was set. Once a key existed in `.env`, habitually including `-m llm` triggered paid calls.
+- **Fix (P-044):** `test_live_llm.py` now also requires the explicit opt-in `RUN_LLM_TESTS=1`. Verified: `pytest -m llm` → 2 skipped, "paid LLM tests need explicit opt-in". README updated.
+- **Interview line:** "I accidentally triggered paid test calls after a key was added, so I made paid tests opt-in by an explicit flag rather than by the mere presence of a key."
+
+### P-044: Paid LLM tests require explicit opt-in
+- **Status:** PROPOSED (implemented).
+- **Alternatives** *[retrospective]*:
+  - Rely on discipline. Con: it failed.
+  - Remove the tests. Con: loses D-033 verification.
+- **Selected:** `RUN_LLM_TESTS=1` plus a key.
+
+### Phase 5 review follow-ups (2026-10-30)
+
+#### D-046: Use only the root `.env`; remove `.env.example`
+- **Phase / status:** 5 review, **APPROVED** (user decision).
+- **Changes:**
+  - `.env.example` deleted from disk. It was **never tracked**: `git ls-files .env.example` was empty, because the user's `.gitignore` line kept it out of the Phase 4 commit. So there is no deletion to commit.
+  - Its `.gitignore` line was removed. `.env` and `.env.*` stay ignored (verified: `.gitignore:5:.env`).
+  - README.md "Configuration" now documents every variable (required: `ANTHROPIC_API_KEY`; optional: `LLM_MODEL`, `LLM_EFFORT`, `LLM_MAX_TOKENS`, `AGENT_MAX_MODEL_CALLS`, `BTS_APP_TOKEN`, `BTS_API_BASE`, `HTTP_TIMEOUT_S`, `DATA_RAW_DIR`, `DATA_PROCESSED_DIR`; tests only: `RUN_LLM_TESTS`) with a copyable `.env` example.
+- **Loading behaviour unchanged:** `settings.py` still calls `load_dotenv(REPO_ROOT / ".env")`. The installed `python-dotenv` default is `override=False` (verified), so shell variables take precedence over `.env`.
+- **Alternatives:**
+  - *[discussed, Phase 4]* A tracked `.env.example` template (P-034). Pro: copy-and-fill. Con: a second file to keep in sync, and the user chose to simplify.
+  - *[selected]* The README table plus a snippet.
+- **Supersedes:** the `.env.example` part of P-034, and the `!.env.example` rule from D-036.
+- **Interview line:** "One gitignored config file, with every variable documented in the README, so there's no template to drift."
+
+#### A-016 verified: T-100 `DISTANCE` is statute miles
+- **Method:**
+  - Compared T-100 July 2026 `distance_miles` with great-circle distances computed from airport coordinates.
+  - Coordinates came from the OurAirports CSV downloaded in Phase 2, used **only for this local check**. It is not redistributed or used by the app (A-014 unaffected).
+  - 400 randomly sampled routes ≥ 100 mi, out of 15,171 matchable routes.
+- **Result:**
+  - T-100 / statute great-circle: median **1.0008** (p5 0.9967, p95 1.0028).
+  - T-100 / nautical great-circle: median 1.1518, which rules out nautical miles.
+  - Examples: ANC–ORD 2,846 vs 2,839. ANC–NRT 3,433 vs 3,426. SFO–LHR 5,368 vs 5,354.
+- **Effect:** the long-haul threshold "≥ 3,000 statute miles" (P-012) applies directly to `distance_miles`. The `bts_t100.LIMITATIONS` text was updated.
+- **Interview line:** "I checked the distance unit against geometry rather than trusting the column name: published distances match statute-mile great circles within about 0.3%."
+
+#### Snapshot reproducibility check
+- **Method:** rebuilt all snapshot CSVs from the cached raw files into a separate scratch directory (`DATA_PROCESSED_DIR` override, `--skip-bts-fallback`) and compared the hashes with the original manifest.
+- **Result: identical** SHA-256 for `airports_faa.csv` (519 rows), `ontime_departures.csv` (352), `ontime_arrival_causes.csv` (352), and `t100_segments.csv` (21,176). `retrieved_at` was preserved from the cache stamps.
+- **Gap found and fixed (P-045):** the manifest did not record the raw files themselves, so a later re-download (for example after a BTS revision) could not be compared. The manifest now has `raw_files: {name: {bytes, sha256}}` per dataset. The real snapshots were rebuilt from the cache. The CSVs are unchanged, and the manifest now carries the raw checksums and the updated distance limitation text.
+- **Remaining reproducibility limits:**
+  - BTS and FAA may revise published files. A re-download can differ, which the raw checksums will now reveal.
+  - The T-100 form download depends on the TranStats page.
+  - The recorded API fallback is a point-in-time capture, re-recorded on each full build (labelled with its time).
+
+#### P-045: Record raw-download checksums in the manifest
+- **Status:** PROPOSED (implemented).
+- **Alternative** *[retrospective]*: commit the raw files. Con: large, and blocked by D-037.
+- **Validation:** the rebuilt manifest lists the raw sizes (58,419 B, 33,075,361 B, 569,046 B) and SHA-256.
+
+#### Phase 5 decision review (awaiting user approval)
+| ID | Decision | Recommendation | Main tradeoff |
+|---|---|---|---|
+| P-038 | Snapshots store counts and sums, not rates | Approve | The engine must compute rates (intended, D-028) |
+| P-039 | Route accessor requires explicit service classes | Approve | Slightly more verbose calls |
+| P-040 | Regions come from FAA data; 2-letter codes resolve as states first; New England = 16 primary airports | Approve | "NE" means Nebraska unless the full name is used |
+| P-041 | Labelled recorded API fallback after 1 retry | Approve | 2.3 MB gitignored file, re-recorded per build |
+| P-042 | Builder at `backend/scripts/`; raw downloads cached on disk; 1 h in-memory API cache | Approve | Deviates from the `scripts/` path sketched in architecture §3.2 |
+| P-043 | OurAirports not used in the app | Approve | No coordinates in the app (not needed) |
+| P-044 | Paid LLM tests need `RUN_LLM_TESTS=1` | Approve | One extra step for real-model runs |
+| P-045 | Raw checksums in the manifest | Approve | None significant |
+
+### Real-model verification with Sonnet 5.5 (2026-10-30, after the user added API credits)
+
+#### D-047: Use `claude-sonnet-5-5` to reduce API cost
+- **Phase / status:** 5 → 6 transition, **APPROVED** (user decision).
+- **Set via:** `LLM_MODEL=claude-sonnet-5-5` in the root `.env`. The key was not changed and never printed.
+- **Context:**
+  - P-022 had *proposed* `claude-opus-5-5` as the default for reasoning quality. It was never approved, only "configurable" (D-033).
+  - The user chose Sonnet 5.5 for cost: $2 / $10 per MTok vs Opus 5.5 at $4 / $20 (Anthropic models page, verified in Phase 3).
+- **Alternatives:**
+  - *[discussed]* Opus 5.5 (P-022). Pro: strongest tool selection and caveat discipline. Con: 2× the price per token, and slower.
+  - *[discussed]* Haiku 5.5. Cheapest, but rejected in Phase 3 for multi-tool reasoning.
+  - *[selected]* Sonnet 5.5.
+- **Tradeoff:** possibly weaker reasoning on complex multi-tool questions. To be checked in the Phase 7 scenario runs (Q1–Q4). Opus remains a one-line `.env` change.
+- **Code default:** `settings.py` still defaults to `claude-opus-5-5` when `LLM_MODEL` is unset, and README documents that. The user's `.env` overrides it. Changing the code default is **not done** (not requested). See the open question below.
+- **Supersedes:** P-022's default model for this project's runs. P-028's fallback order is now moot (Sonnet is primary).
+- **Interview line:** "I made the model a config value from day one, so moving to a cheaper model for cost was a one-line change, verified by the same smoke tests."
+
+#### Results: `RUN_LLM_TESTS=1 pytest -m llm -s` (one paid run, 2 tests)
+| Test | Result | Evidence |
+|---|---|---|
+| Model ID accepted; real tool call; artifact | **PASS** | Response metadata `model_name = claude-sonnet-5-5` (asserted). 2 model calls. Tool called with `{"key": "beta"}`. Artifact `value = 22`. Reply: "The test value for key beta is **22**." |
+| Follow-up uses session memory | **PASS** | Turn 2, "Now do the same for gamma.", was resolved from context into `lookup_test_value({"key": "gamma"})`. The thread holds the tool results `["alpha", "gamma"]`. This turn's evidence is only `gamma`. Reply: "The test value for key gamma is **33**." |
+| Offline regression | **PASS** | `pytest` → 48 passed. `pytest -m llm` without opt-in → 2 skipped. |
+
+- **Usage (from the response `usage_metadata`):**
+  - Test 1: 986 input / 66 output tokens.
+  - Test 2: 2,170 input / 136 output tokens (summed over the whole thread's AI messages).
+  - **Estimated cost ≈ $0.008** at $2 / $10 per MTok.
+- **Paid calls this round:** exactly one run of the 2 tests. No retries were needed.
+- **Test changes (free, before the paid run):**
+  - Assert the response model equals `LLM_MODEL`.
+  - Assert the thread holds both turns' tool artifacts.
+  - Assert the tool input.
+  - Print the model and token usage (no secrets).
+  - The opt-in (P-044) is unchanged.
+- **Side fix:** writing `.env` with Windows PowerShell 5.1 `Set-Content -Encoding utf8` added a UTF-8 BOM. `python-dotenv` still loaded both variables, but the BOM was stripped to keep the file plain UTF-8. The key was never printed.
+
+#### Verified vs. still unverified
+- **Verified with the real model (sync `invoke` path):**
+  - The `claude-sonnet-5-5` ID.
+  - `ChatAnthropic` + `create_agent` tool calling.
+  - Pydantic tool schema accepted.
+  - `content_and_artifact` artifacts on real `ToolMessage`s.
+  - `InMemorySaver` memory across turns, with history replayed successfully.
+- **Not verified:**
+  - Whether Sonnet emitted thinking blocks in these runs. The second turn replayed the full history without error, but the messages were not inspected for thinking blocks, so "thinking round-trip" is unproven.
+  - The async `ainvoke` path (scheduled for Phase 7).
+  - `claude-opus-5-5` generation (not run, by the user's cost instruction).
+  - Agent quality on the real aviation scenarios (Phase 7).
+- **Open question (OQ-12):** should the code default in `settings.py` also become `claude-sonnet-5-5`, so reviewers who omit `LLM_MODEL` get the cheaper model? **Resolved by D-048 (yes).**
+
+#### D-048: Code default model = `claude-sonnet-5-5`
+- **Phase / status:** 5 close, **APPROVED** (user decision). Resolves OQ-12 and OQ-4. **REVISITS P-022** (Opus default, never approved). **P-028** (fallback order Opus → Sonnet) is superseded and kept for history.
+- **Changes:**
+  - `settings.py`: `DEFAULT_LLM_MODEL = "claude-sonnet-5-5"`. `LLM_MODEL` still overrides it (D-033).
+  - README: the `.env` example and the variable table now show Sonnet as the default. Opus is mentioned as an optional, roughly 2× price alternative.
+  - architecture.md §2 and §12 now show the approved default. The unimplemented `LLM_PROVIDER` variable is noted as such.
+  - API key untouched.
+- **Validation (offline, no paid calls):**
+  - New test `test_default_model_is_sonnet_when_unset`.
+  - `test_model_id_comes_from_env` still passes.
+  - A manual check with no `.env` and no `LLM_MODEL` shows the default `claude-sonnet-5-5`.
+  - `pytest` → 49 passed.
+  - The paid tests stay opt-in (skipped).
+- **Interview line:** "The default follows the cost decision, but it's one environment variable away from Opus when a client wants maximum reasoning quality."
+
+#### Phase 5 final decision table (for final approval)
+| ID | Decision made | Reason | Alternative considered | Remaining risk |
+|---|---|---|---|---|
+| P-038 | Snapshots store counts and sums (numerators and denominators), not rates | Formulas live only in the Phase 6 engine (D-028). Small-sample warnings need denominators (D-029). | Precomputed rates in the builder | None significant. The engine must compute every rate. |
+| P-039 | Route accessor requires explicit service classes; `classes_present()` discloses each class's departures | Prevents silently mixing cargo into passenger metrics (ANC: G+P = 3,708 of 9,087 in July 2026) | Default to all classes | More verbose calls |
+| P-040 | Regions come from FAA data (RO/ST); 2-letter codes resolve as states first; New England = 16 primary airports (an earlier count of 15 was corrected) | Generic and data-driven, no hardcoded lists. "NE" and "AL" are ambiguous. | Hardcoded region lists; region codes first | "NE" means Nebraska unless "New England" is spelled out |
+| P-041 | Recorded BTS API response used only after the live call plus 1 retry fail; labelled `recorded_api_fallback` | Demo resilience without misrepresenting the source (D-017) | No fallback; a silent fallback | Point-in-time data. A 2.3 MB gitignored file is re-recorded on each full build. |
+| P-042 | Builder at `backend/scripts/build_snapshots.py`; raw downloads cached on disk with retrieval stamps; 1 h in-memory API cache | Imports `app.*` without packaging. Avoids repeated large downloads. No Redis or DB. | Root `scripts/` (as sketched); no caching | Path differs from the architecture sketch. A stale cache until rebuilt. |
+| P-043 | OurAirports not used in the app | FAA data covers state, region, and hub. A-014 licence unverified. | Add OurAirports for coordinates | No coordinates in the app (not needed: T-100 has distances) |
+| P-044 | Paid LLM tests need `RUN_LLM_TESTS=1` plus a key | Prevents accidental paid calls (the Phase 5 incident) | Rely on discipline; drop the tests | None. One extra step. |
+| P-045 | Raw-download sizes and SHA-256 recorded in the manifest | Detects publisher revisions on re-download | Commit the raw files (large, blocked by D-037) | Revised source files cannot be restored, only detected |
+
+#### Final status: T-100 distance units and snapshot distribution / reproducibility
+- **Distance units (A-016): VERIFIED statute miles.** Median ratio 1.0008 (p5 0.9967, p95 1.0028) vs great-circle statute miles on 400 routes. Nautical miles would be about 1.15.
+- **Reproducibility: VERIFIED from cached raw files.** Identical SHA-256 for all 4 processed CSVs on rebuild. The raw sizes and checksums are now in the manifest (P-045).
+- **Distribution: NOT distributed (D-037).** `data/raw/` and `data/processed/` stay gitignored until the licensing and provenance checks (A-011 TranStats automated download, A-014 OurAirports, which is not used) are done. Reviewers rebuild locally with one command (about 6 minutes; documented in README).
+
+### P-043: OurAirports not integrated in the MVP
+- The FAA file already provides state, FAA region, service level, and hub for every commercial airport. OurAirports' licence (A-014) is unverified.
+- **Alternative:** add OurAirports for coordinates and municipality. Not needed: distances come from T-100. Deferred.
+
+---
+
 ## 4. Superseded / revisited decisions
 
 | Original | Original content (kept) | Status | Replaced by | Why it changed |
@@ -1075,6 +1324,9 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | P-022 (part) | Model selection as one proposal | REVISITED (split) | D-033 (configurable + smoke test, approved); default stays PROPOSED; P-028 fallback | |
 | P-023 | Single server + Vite proxy | REVISITED (approved) | D-034 | |
 | P-025 | `.gitignore` fix | REVISITED (approved) | D-036 | |
+| P-034 (part) / D-036 (part) | Tracked `.env.example` template and `!.env.example` ignore exception | REVISITED | D-046 | User simplified config to the root `.env` only, with variables documented in README |
+| P-022 | Default model `claude-opus-5-5` (never approved) | REVISITED | D-047, D-048 | User chose Sonnet 5.5 for cost |
+| P-028 | Fallback order Opus → Sonnet | REVISITED (superseded) | D-048 | Sonnet is now the default |
 | Rev 2 scoring details | KPI dropped if fewer than **2** values; ranking with at least **2** airports | REVISITED | P-027 (minimum 3) | Min-max on 2 points only yields 0/100 |
 | P-026 | Optional non-blocking text number scanner | REVISITED (dropped) | D-041 | User decision. Unreliable. Artifacts-first plus propagation tests instead. |
 | P-027 | Scoring spec v1 with options A/B/C | REVISITED (approved) | D-039 (option A) | User approval at Phase 3 close |
@@ -1100,7 +1352,7 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | OQ-1 | Approve the **exact scoring spec P-027** (formulas, min-max candidate-group normalization, default weights, coverage ≥ 0.60, minimum 3 airports and 3 values per KPI)? Normalization option A, B, or C? | D7 |
 | ~~OQ-2~~ | ~~P-019 / P-020~~ → **resolved** by D-030 / D-031 | |
 | ~~OQ-3~~ | ~~Commit snapshots before checks?~~ → **resolved** by D-037 (no) | |
-| OQ-4 | Approve the **default model `claude-opus-5-5`** (P-022) and the fallback order P-028? | D9 |
+| ~~OQ-4~~ | ~~Approve the default model `claude-opus-5-5` (P-022) and the fallback order P-028?~~ → **resolved** by D-047 / D-048 (Sonnet 5.5 default) | D9 |
 | OQ-5 | Approve **P-024** (thin `@tool` wrappers, `content_and_artifact`, error middleware) and the evidence pipeline and test plan (architecture §10.1–10.2)? | D4 |
 | ~~OQ-6~~ | ~~.gitignore fix~~ → **resolved** by D-036 (edited; commit pending with the user) | |
 | ~~OQ-7~~ | ~~300-flight guard~~ → **resolved** by D-029 (configurable warning) | |
@@ -1124,15 +1376,16 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | A-012 | `r495-tyji` carrier coverage; truncated international field meanings | **Partially verified (2026-10-30):** the API totals equal the T-100 **Segment (All Carriers)** sums over classes F/G/L/P for Dec 2025 (ANC, SFO, SNA), so coverage = the T-100 All Carriers table. `domestic_departures + outbound_international = total_departures`. The meanings of the truncated `outbound_international_1..4` fields are still unverified (not used). |
 | A-013 | FAA TAF per-airport values usable | Unverified (file and headers only) |
 | A-014 | OurAirports licence allows redistribution | Unverified |
-| A-015 | July 2026 T-100 download works like Dec 2025 | Unverified |
-| A-016 | T-100 `DISTANCE` is in statute miles | Unverified |
+| A-015 | July 2026 T-100 download works like Dec 2025 | **Verified (2026-10-30):** form POST returned the July 2026 ZIP (21,176 aggregated rows), and its totals equal the live API for ANC, SFO, and SNA |
+| A-016 | T-100 `DISTANCE` is in statute miles | **Verified (2026-10-30):** median ratio to statute great-circle 1.0008 (p5 0.9967, p95 1.0028) on 400 routes. Nautical miles would be about 1.15. |
 | A-017 | 300-flight threshold is a reasonable *warning* level | Unverified. Now a configurable warning (D-029). Check the distribution in the snapshot. |
 | A-018 | LangChain's default handling of Pydantic tool-arg validation errors (vs. our middleware) | **Verified (fake model, 2026-10-30):** `ToolNode` converts the validation error to `ToolMessage(status="error")` and the run continues. |
-| A-019 | `create_agent` + `ChatAnthropic` work with `claude-opus-5-5`: automatic tool choice, adaptive thinking blocks round-trip through `InMemorySaver` history | **BLOCKED (2026-10-30): account credit balance too low (HTTP 400).** The key is valid and the model ID is available (Models API). Earlier: BLOCKED (no API key). Memory mechanics verified with the fake model. The request payload was verified offline (no forced `tool_choice`, adaptive thinking, effort). Real model call pending. |
+| A-019 | `create_agent` + `ChatAnthropic` work with `claude-opus-5-5`: automatic tool choice, adaptive thinking blocks round-trip through `InMemorySaver` history | **Verified with `claude-sonnet-5-5` (2026-10-30, D-047):** automatic tool choice, real tool calls, artifacts, and memory across turns all work. Opus 5.5 generation was not tested (cost decision). The presence of thinking blocks in history was not inspected. History: BLOCKED (no key), then BLOCKED (credits, HTTP 400). Memory mechanics were verified earlier with the fake model, and the request payload offline. |
 | A-020 | `recursion_limit` in the run config bounds tool rounds as expected | **REVISITED:** replaced by `ModelCallLimitMiddleware` (P-032), verified with the fake model. `recursion_limit` itself was not tested. |
 | A-021 | A fake chat model is available in langchain-core test utilities for API tests | **Verified, with a caveat:** `GenericFakeChatModel` exists but lacks `bind_tools`. A subclass works (P-033). |
 | A-023 | API `total_departures` includes all-cargo classes; seats and passengers come from passenger-capable classes | **Verified (2026-10-30):** ANC Dec 2025 G 2,932 + P 1,398 of 6,872 departures. Seats: F 238,358, L 10,171, P 137, G 0. |
 | A-024 | On-time `DepDel15` blank ⇔ cancelled; definitions per the BTS Fields page | **Verified (2026-10-30, SFO Jul 2026):** 156 blanks, all cancelled. 3 cancelled rows have a `DepDel15` value (excluded by the `Cancelled=0` rule). No blank `TaxiOut` on non-cancelled rows. |
+| A-027 | `claude-sonnet-5-5` generates and calls tools through LangChain on the configured account | **Verified (2026-10-30):** response `model_name = claude-sonnet-5-5`, 2/2 smoke tests pass |
 | A-026 | `claude-opus-5-5` is available to the configured account | **Verified (Models API, 2026-10-30):** `retrieve` OK. `claude-sonnet-5-5` and `claude-haiku-5-5` are also available. Message generation is still unverified (billing). |
 | A-025 | Credentials read by `langchain-anthropic` | **Verified (1.7.7 source + construction test, 2026-10-30):** `ANTHROPIC_API_KEY` is read. `ANTHROPIC_AUTH_TOKEN` is **not**. |
 | A-022 | `ToolMessage.artifact` is preserved on the messages returned by `agent.ainvoke` (and through the checkpointer) for `content_and_artifact` tools | **Verified (fake model, sync `invoke`, 2026-10-30):** the artifact is present on returned messages and persists in the thread state across turns. The contextvars fallback is not needed. Async `ainvoke` is to be confirmed in Phase 7. |

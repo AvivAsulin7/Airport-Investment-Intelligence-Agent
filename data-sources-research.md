@@ -92,7 +92,7 @@
 - **Docs/page:** https://www.faa.gov/airports/planning_capacity/passenger_allcargo_stats/passenger (**200**)
 - **Endpoint tested:** `GET …/passenger/arp-cy2025-commercial-service-enplanements.xlsx` → **200**, 58 KB. Also linked: all-enplanements and all-cargo CY2025 files.
 - **Fields (verified):** `Rank, RO (FAA region), ST (state), Locid, City, Airport Name, S/L (service level, e.g. P = primary, CS = non-primary commercial service), Hub (L/M/S/N), CY 25 Enplanements, CY 24 Enplanements, % Change`. 522 airport rows.
-- **New England (verified):** 27 airports with `RO = NE`, covering CT, ME, MA, NH, RI, VT. Of those, 15 are primary airports (S/L = P), for example BOS (L hub), BDL (M), PVD, PWM, HVN, BTV, MHT (S). This gives a defensible, official airport list for Q1.
+- **New England (verified):** 27 airports with `RO = NE`, covering CT, ME, MA, NH, RI, VT. Of those, 16 are primary airports (S/L = P). This was corrected in Phase 5 from a miscount of 15 (NOTES.md P-040). for example BOS (L hub), BDL (M), PVD, PWM, HVN, BTV, MHT (S). This gives a defensible, official airport list for Q1.
 - **Limitations:**
   - An annual file, not an API.
   - Only two years per file. Earlier years need earlier files **[NOT VERIFIED]**.
