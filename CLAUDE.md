@@ -62,6 +62,11 @@ Note: `FDE Exam 2.pdf` is kept local only. It is excluded via `.gitignore` and m
 - Never commit credentials, API keys, or secrets. Use environment variables or a local file that git ignores, and provide an example template with placeholders only.
 - Check staged changes for secrets before any commit.
 
-## 9. Decision logging
+## 9. Git
+- **Do not run `git add`, `git commit`, or `git push`.** The user stages, writes, and makes all commits and pushes manually.
+- At the end of a phase, suggest a commit message and list the files that should be included. Do not run the commit.
+- Read-only Git commands (`git status`, `git diff`, `git log`) are allowed.
+
+## 10. Decision logging
 - Record important technical decisions and rejected alternatives in `NOTES.md`, including the date and the reason.
 - When an assumption is verified or disproved, update `NOTES.md` and, if relevant, `requirements.md`.

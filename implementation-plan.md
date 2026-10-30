@@ -16,8 +16,8 @@
 | # | Phase | Status | Indicative time |
 |---|---|---|---|
 | 1 | Requirements & Project Setup | **Completed** (approved for finalization, D-012) | ~1 h |
-| 2 | Data Sources Research | **Approved / not started** | ~2 h (time-boxed, D-009) |
-| 3 | Architecture & Scoring Design | Pending | ~1.5 h |
+| 2 | Data Sources Research | **Completed** (approved, D-015) | ~2 h (time-boxed, D-009) |
+| 3 | Architecture & Scoring Design | **Approved / not started** (begins after the Phase 2 commit, D-015) | ~1.5 h |
 | 4 | Project Foundation | Pending | ~1 h |
 | 5 | Aviation Data Integration | Pending | ~3 h |
 | 6 | Deterministic Analytics Engine | Pending | ~3 h |
@@ -41,7 +41,7 @@
 - **Suggested commit:** `docs: add requirements analysis, working rules, decision log, and phase roadmap`
 
 ## Phase 2: Data Sources Research
-- **Status:** Approved / not started (D-008). Time-boxed to ~2 h (D-009).
+- **Status:** Completed and approved (NOTES.md D-015). Approved data decisions: D-016 to D-021.
 - **Goal:** Check, using real requests or downloads, which public aviation data can support Q1–Q4, and find blockers early.
 - **Deliverables:**
   - `data-sources-research.md`: the data feasibility report.
@@ -56,7 +56,7 @@
 - **Suggested commit:** `docs: add public aviation data feasibility research`
 
 ## Phase 3: Architecture & Scoring Design
-- **Status:** Pending (proposed).
+- **Status:** Approved / not started. Begins after the user's Phase 2 commit (NOTES.md D-015). Must follow D-016 to D-021.
 - **Goal:** Decide the architecture, stack, data access approach, metric definitions, scoring methodology, and how responsibilities split between AI and deterministic code. Decisions are based on Phase 2 evidence.
 - **Deliverables:**
   - A design proposal: options, tradeoffs, and a recommendation for each major decision.
@@ -65,7 +65,7 @@
   - Approved decisions recorded in NOTES.md.
   - First draft of `architecture.md`, the design/architecture document required by the PDF (requirements.md D-2). It is finalized in Phase 9.
 - **Acceptance criteria:**
-  - Open decisions O-002–O-014 are resolved or explicitly deferred, with user approval.
+  - The remaining open decisions in NOTES.md (O-002 to O-006 and O-009 to O-014) are resolved or explicitly deferred, with user approval.
   - Each metric can be computed from data verified in Phase 2.
   - LLM and deterministic responsibilities are clearly separated (CLAUDE.md §5).
 - **Dependencies:** Phase 2.
