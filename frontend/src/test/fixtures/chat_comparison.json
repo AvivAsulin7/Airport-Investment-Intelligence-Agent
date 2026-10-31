@@ -1,0 +1,292 @@
+{
+  "errors": [],
+  "evidence": [
+    {
+      "artifact": {
+        "confidence": "low",
+        "coverage_notes": [
+          "Delay data covers BTS reporting carriers only (large US passenger airlines)."
+        ],
+        "data": {
+          "airports": [
+            "AAA",
+            "DDD"
+          ],
+          "baseline": "AAA",
+          "differences": {
+            "avg_dep_delay_min": {
+              "DDD": {
+                "absolute": 0.0,
+                "relative": null
+              }
+            },
+            "avg_taxi_out_min": {
+              "DDD": {
+                "absolute": 0.0,
+                "relative": 0.0
+              }
+            },
+            "cancellation_rate": {
+              "DDD": {
+                "absolute": 0.19889012208657048,
+                "relative": 179.2
+              }
+            },
+            "delay_rate": {
+              "DDD": {
+                "absolute": 0.09722222222222221,
+                "relative": 0.3499999999999999
+              }
+            },
+            "departures_t12m": {
+              "DDD": {
+                "absolute": 15.600000000000009,
+                "relative": 0.12745098039215694
+              }
+            },
+            "passengers_t12m": {
+              "DDD": {
+                "absolute": 1560.0,
+                "relative": 0.12745098039215685
+              }
+            }
+          },
+          "metrics": [
+            "delay_rate",
+            "cancellation_rate",
+            "avg_taxi_out_min",
+            "avg_dep_delay_min",
+            "departures_t12m",
+            "passengers_t12m"
+          ],
+          "small_sample_airports": [
+            {
+              "affected_metrics": [
+                "delay_rate",
+                "cancellation_rate",
+                "avg_taxi_out_min",
+                "avg_dep_delay_min"
+              ],
+              "airport": "DDD",
+              "eligible_departures": 40,
+              "period": "2026-07",
+              "threshold": 300
+            }
+          ],
+          "values": {
+            "avg_dep_delay_min": {
+              "AAA": {
+                "denominator": 9000,
+                "flags": [],
+                "metric": "avg_dep_delay_min",
+                "missing_reason": null,
+                "numerator": 0.0,
+                "value": 0.0,
+                "window": "2026-07"
+              },
+              "DDD": {
+                "denominator": 40,
+                "flags": [
+                  "low_sample: 40 departed flights < 300"
+                ],
+                "metric": "avg_dep_delay_min",
+                "missing_reason": null,
+                "numerator": 0.0,
+                "value": 0.0,
+                "window": "2026-07"
+              }
+            },
+            "avg_taxi_out_min": {
+              "AAA": {
+                "denominator": 9000,
+                "flags": [],
+                "metric": "avg_taxi_out_min",
+                "missing_reason": null,
+                "numerator": 135000.0,
+                "value": 15.0,
+                "window": "2026-07"
+              },
+              "DDD": {
+                "denominator": 40,
+                "flags": [
+                  "low_sample: 40 departed flights < 300"
+                ],
+                "metric": "avg_taxi_out_min",
+                "missing_reason": null,
+                "numerator": 600.0,
+                "value": 15.0,
+                "window": "2026-07"
+              }
+            },
+            "cancellation_rate": {
+              "AAA": {
+                "denominator": 9010,
+                "flags": [],
+                "metric": "cancellation_rate",
+                "missing_reason": null,
+                "numerator": 10,
+                "value": 0.0011098779134295228,
+                "window": "2026-07"
+              },
+              "DDD": {
+                "denominator": 50,
+                "flags": [
+                  "low_sample: 40 departed flights < 300"
+                ],
+                "metric": "cancellation_rate",
+                "missing_reason": null,
+                "numerator": 10,
+                "value": 0.2,
+                "window": "2026-07"
+              }
+            },
+            "delay_rate": {
+              "AAA": {
+                "denominator": 9000,
+                "flags": [],
+                "metric": "delay_rate",
+                "missing_reason": null,
+                "numerator": 2500,
+                "value": 0.2777777777777778,
+                "window": "2026-07"
+              },
+              "DDD": {
+                "denominator": 40,
+                "flags": [
+                  "low_sample: 40 departed flights < 300"
+                ],
+                "metric": "delay_rate",
+                "missing_reason": null,
+                "numerator": 15,
+                "value": 0.375,
+                "window": "2026-07"
+              }
+            },
+            "departures_t12m": {
+              "AAA": {
+                "denominator": null,
+                "flags": [],
+                "metric": "departures_t12m",
+                "missing_reason": null,
+                "numerator": null,
+                "value": 122.39999999999999,
+                "window": "2025-08..2026-07"
+              },
+              "DDD": {
+                "denominator": null,
+                "flags": [],
+                "metric": "departures_t12m",
+                "missing_reason": null,
+                "numerator": null,
+                "value": 138.0,
+                "window": "2025-08..2026-07"
+              }
+            },
+            "passengers_t12m": {
+              "AAA": {
+                "denominator": null,
+                "flags": [],
+                "metric": "passengers_t12m",
+                "missing_reason": null,
+                "numerator": null,
+                "value": 12240.0,
+                "window": "2025-08..2026-07"
+              },
+              "DDD": {
+                "denominator": null,
+                "flags": [],
+                "metric": "passengers_t12m",
+                "missing_reason": null,
+                "numerator": null,
+                "value": 13800.0,
+                "window": "2025-08..2026-07"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "avg_dep_delay_min": "mean(DepDelay) over Origin=X, Cancelled=0, DepDelay present (early departures negative)",
+          "avg_taxi_out_min": "mean(TaxiOut) over Origin=X, Cancelled=0, TaxiOut present",
+          "cancellation_rate": "count(Origin=X, Cancelled=1) / count(Origin=X)",
+          "delay_rate": "count(Origin=X, Cancelled=0, DepDel15=1) / count(Origin=X, Cancelled=0, DepDel15 present)",
+          "departures_t12m": "sum(total_departures, last 12 months)",
+          "passengers_t12m": "sum(total_passengers, last 12 months); min-max normalized on log10 when used in scoring"
+        },
+        "formula_version": "v1",
+        "provenance": [
+          {
+            "cache_status": "live",
+            "limitations": [],
+            "name": "fake api",
+            "observation_period": "2024-08..2026-07",
+            "retrieval_method": "SODA",
+            "retrieved_at": "t",
+            "source_type": "public_api",
+            "url": "u"
+          },
+          {
+            "cache_status": "snapshot",
+            "limitations": [],
+            "name": "fake snapshot",
+            "observation_period": "2026-07",
+            "retrieval_method": "file",
+            "retrieved_at": "t",
+            "source_type": "public_dataset_snapshot",
+            "url": "u"
+          }
+        ],
+        "result_type": "comparison",
+        "warnings": [
+          "Small sample: DDD has 40 eligible departures in 2026-07 (< 300); its delay, cancellation and taxi-out values are statistically noisy. Included with this warning, not excluded.",
+          "Traffic metrics cover the last 12 months from the live BTS API; delay, cancellation and taxi-out metrics cover a single month from the on-time snapshot. Periods differ."
+        ],
+        "windows": {
+          "operations": "2026-07",
+          "traffic_current": "2025-08..2026-07",
+          "traffic_prior": "2024-08..2025-07"
+        }
+      },
+      "input": {
+        "airports": [
+          "AAA",
+          "DDD"
+        ]
+      },
+      "status": "success",
+      "tool": "compare_airports",
+      "tool_call_id": "call_compare"
+    }
+  ],
+  "incomplete": false,
+  "mode": "agent",
+  "notice": null,
+  "reply_markdown": "Delay rates differ; DDD is a small sample.",
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "sources": [
+    {
+      "cache_status": "live",
+      "limitations": [],
+      "name": "fake api",
+      "observation_period": "2024-08..2026-07",
+      "retrieval_method": "SODA",
+      "retrieved_at": "t",
+      "source_type": "public_api",
+      "url": "u"
+    },
+    {
+      "cache_status": "snapshot",
+      "limitations": [],
+      "name": "fake snapshot",
+      "observation_period": "2026-07",
+      "retrieval_method": "file",
+      "retrieved_at": "t",
+      "source_type": "public_dataset_snapshot",
+      "url": "u"
+    }
+  ],
+  "status": "complete",
+  "warnings": [
+    "Small sample: DDD has 40 eligible departures in 2026-07 (< 300); its delay, cancellation and taxi-out values are statistically noisy. Included with this warning, not excluded.",
+    "Traffic metrics cover the last 12 months from the live BTS API; delay, cancellation and taxi-out metrics cover a single month from the on-time snapshot. Periods differ."
+  ]
+}

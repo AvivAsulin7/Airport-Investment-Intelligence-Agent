@@ -1,0 +1,25 @@
+{
+  "errors": [
+    "get_long_haul_share: Error invoking tool 'get_long_haul_share' with kwargs {'airport': 'TOOLONG'} with error:\n airport: String should match pattern '^[A-Za-z0-9]{3}$'\n Please fix the error and try again."
+  ],
+  "evidence": [
+    {
+      "artifact": null,
+      "error": "Error invoking tool 'get_long_haul_share' with kwargs {'airport': 'TOOLONG'} with error:\n airport: String should match pattern '^[A-Za-z0-9]{3}$'\n Please fix the error and try again.",
+      "input": {
+        "airport": "TOOLONG"
+      },
+      "status": "error",
+      "tool": "get_long_haul_share",
+      "tool_call_id": "call_err"
+    }
+  ],
+  "incomplete": false,
+  "mode": "agent",
+  "notice": null,
+  "reply_markdown": "I could not run that analysis: the airport code was invalid.",
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "sources": [],
+  "status": "completed_with_tool_errors",
+  "warnings": []
+}

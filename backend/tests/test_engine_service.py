@@ -7,8 +7,9 @@ import pytest
 from app.data.airports import Airport, Resolution
 from app.data.bts_api import MonthlyTraffic, TrafficSeries
 from app.data.layer import DataLayer
-from app.data.operations import DepartureCounts, OperationsResult
+from app.data.operations import ArrivalCauses, DepartureCounts, OperationsResult
 from app.data.provenance import Provenance
+from app.data.routes import RouteResult, RouteSegment
 from app.data.validation import DataValidationError, month_range
 from app.engine.service import AnalyticsService
 
@@ -42,7 +43,20 @@ class FakeOps:
     def get(self, airports):
         dep = {a: DepartureCounts(a, FIXTURE[a][3] + 10, 10, 0, FIXTURE[a][3], FIXTURE[a][4],
                                   FIXTURE[a][3], 15.0 * FIXTURE[a][3], FIXTURE[a][3], 0.0) for a in airports}
-        return OperationsResult(dep, {a: None for a in airports}, "2026-07", SNAP)
+        arr = {a: ArrivalCauses(a, 100, 1, 25, 120.0, 30.0, 300.0, 0.0, 150.0) for a in airports}
+        return OperationsResult(dep, arr, "2026-07", SNAP)
+
+
+class FakeRoutes:
+    """Fictional route mix: passenger and cargo classes with short and long routes."""
+
+    SEGMENTS = [("F", 900, 400), ("F", 3400, 60), ("L", 1200, 20), ("G", 1800, 150), ("G", 4100, 120),
+                ("P", 2600, 30), ("P", 5200, 70)]
+
+    def segments_from(self, origin, service_classes):
+        segs = [RouteSegment(origin, f"X{i:02d}", "US", c, float(d), float(n), float(n), 0, 0, 0)
+                for i, (c, d, n) in enumerate(self.SEGMENTS) if c in set(service_classes)]
+        return RouteResult(origin, frozenset(service_classes), segs, "2026-07", SNAP)
 
 
 class FakeAirports:
@@ -59,6 +73,9 @@ class FakeAirports:
 
     def with_hub(self, hub):
         return [self._ap(c) for c in FIXTURE if FIXTURE[c][0] == hub]
+
+    def search(self, query):
+        return Resolution([self._ap(query.upper())], f"Airport code {query.upper()}")
 
 
 @pytest.fixture

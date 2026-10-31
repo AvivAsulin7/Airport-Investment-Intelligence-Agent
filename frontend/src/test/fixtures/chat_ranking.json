@@ -1,0 +1,544 @@
+{
+  "errors": [],
+  "evidence": [
+    {
+      "artifact": {
+        "confidence": "medium",
+        "coverage_notes": [],
+        "data": {
+          "airports": [
+            {
+              "airport": "DDD",
+              "coverage": 1.0000000000000002,
+              "flags": [
+                "low_sample: 40 departed flights < 300"
+              ],
+              "kpis": {
+                "avg_taxi_out_min": {
+                  "contribution": 4.999999999999999,
+                  "normalized": 50.0,
+                  "raw": 15.0,
+                  "weight": 0.1
+                },
+                "delay_rate": {
+                  "contribution": 19.999999999999996,
+                  "normalized": 100.0,
+                  "raw": 0.375,
+                  "weight": 0.2
+                },
+                "departure_growth": {
+                  "contribution": 14.999999999999996,
+                  "normalized": 100.0,
+                  "raw": 0.1499999999999999,
+                  "weight": 0.15
+                },
+                "load_factor": {
+                  "contribution": 0.0,
+                  "normalized": 0.0,
+                  "raw": 0.7000000000000001,
+                  "weight": 0.25
+                },
+                "passenger_growth": {
+                  "contribution": 29.999999999999993,
+                  "normalized": 100.0,
+                  "raw": 0.1499999999999999,
+                  "weight": 0.3
+                }
+              },
+              "rank": 1,
+              "score": 69.99999999999999,
+              "status": "ranked"
+            },
+            {
+              "airport": "CCC",
+              "coverage": 1.0000000000000002,
+              "flags": [],
+              "kpis": {
+                "avg_taxi_out_min": {
+                  "contribution": 4.999999999999999,
+                  "normalized": 50.0,
+                  "raw": 15.0,
+                  "weight": 0.1
+                },
+                "delay_rate": {
+                  "contribution": 3.333333333333332,
+                  "normalized": 16.666666666666664,
+                  "raw": 0.25,
+                  "weight": 0.2
+                },
+                "departure_growth": {
+                  "contribution": 6.923076923076958,
+                  "normalized": 46.1538461538464,
+                  "raw": 0.0800000000000003,
+                  "weight": 0.15
+                },
+                "load_factor": {
+                  "contribution": 8.333333333333325,
+                  "normalized": 33.33333333333331,
+                  "raw": 0.75,
+                  "weight": 0.25
+                },
+                "passenger_growth": {
+                  "contribution": 13.846153846153866,
+                  "normalized": 46.15384615384623,
+                  "raw": 0.08000000000000007,
+                  "weight": 0.3
+                }
+              },
+              "rank": 2,
+              "score": 37.43589743589748,
+              "status": "ranked"
+            },
+            {
+              "airport": "AAA",
+              "coverage": 1.0000000000000002,
+              "flags": [],
+              "kpis": {
+                "avg_taxi_out_min": {
+                  "contribution": 4.999999999999999,
+                  "normalized": 50.0,
+                  "raw": 15.0,
+                  "weight": 0.1
+                },
+                "delay_rate": {
+                  "contribution": 7.037037037037036,
+                  "normalized": 35.18518518518519,
+                  "raw": 0.2777777777777778,
+                  "weight": 0.2
+                },
+                "departure_growth": {
+                  "contribution": 0.0,
+                  "normalized": 0.0,
+                  "raw": 0.020000000000000018,
+                  "weight": 0.15
+                },
+                "load_factor": {
+                  "contribution": 24.999999999999993,
+                  "normalized": 100.0,
+                  "raw": 0.85,
+                  "weight": 0.25
+                },
+                "passenger_growth": {
+                  "contribution": 0.0,
+                  "normalized": 0.0,
+                  "raw": 0.020000000000000018,
+                  "weight": 0.3
+                }
+              },
+              "rank": 3,
+              "score": 37.03703703703703,
+              "status": "ranked"
+            },
+            {
+              "airport": "BBB",
+              "coverage": 1.0000000000000002,
+              "flags": [],
+              "kpis": {
+                "avg_taxi_out_min": {
+                  "contribution": 4.999999999999999,
+                  "normalized": 50.0,
+                  "raw": 15.0,
+                  "weight": 0.1
+                },
+                "delay_rate": {
+                  "contribution": 0.0,
+                  "normalized": 0.0,
+                  "raw": 0.225,
+                  "weight": 0.2
+                },
+                "departure_growth": {
+                  "contribution": 3.4615384615384666,
+                  "normalized": 23.076923076923116,
+                  "raw": 0.050000000000000044,
+                  "weight": 0.15
+                },
+                "load_factor": {
+                  "contribution": 16.66666666666667,
+                  "normalized": 66.6666666666667,
+                  "raw": 0.8,
+                  "weight": 0.25
+                },
+                "passenger_growth": {
+                  "contribution": 6.923076923076933,
+                  "normalized": 23.076923076923116,
+                  "raw": 0.050000000000000044,
+                  "weight": 0.3
+                }
+              },
+              "rank": 4,
+              "score": 32.051282051282065,
+              "status": "ranked"
+            }
+          ],
+          "candidate_group": {
+            "airports": [
+              "AAA",
+              "BBB",
+              "CCC",
+              "DDD"
+            ],
+            "eligibility": null,
+            "hub_classes": {
+              "AAA": "L",
+              "BBB": "M",
+              "CCC": "S",
+              "DDD": "N"
+            },
+            "hub_filter": null,
+            "interpretation": "fake region",
+            "query": "Fictional region"
+          },
+          "interpretation": "Scores are relative expansion-opportunity signals within this candidate group (min-max per KPI). A high relative score means stronger demand-pressure indicators than the other airports in this group; it is a lead for further analysis, not a verified investment opportunity. Scores are not profitability forecasts and do not prove a terminal capacity shortage. Adding or removing airports can change other airports' scores and order. Scores with different KPI coverage are not perfectly comparable, and airports flagged as small samples rest on few flights.",
+          "metric_details": {
+            "AAA": {
+              "avg_taxi_out_min": {
+                "denominator": 9000,
+                "flags": [],
+                "metric": "avg_taxi_out_min",
+                "missing_reason": null,
+                "numerator": 135000.0,
+                "value": 15.0,
+                "window": "2026-07"
+              },
+              "delay_rate": {
+                "denominator": 9000,
+                "flags": [],
+                "metric": "delay_rate",
+                "missing_reason": null,
+                "numerator": 2500,
+                "value": 0.2777777777777778,
+                "window": "2026-07"
+              },
+              "departure_growth": {
+                "denominator": 120.0,
+                "flags": [],
+                "metric": "departure_growth",
+                "missing_reason": null,
+                "numerator": 122.39999999999999,
+                "value": 0.020000000000000018,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              },
+              "load_factor": {
+                "denominator": 14400.0,
+                "flags": [],
+                "metric": "load_factor",
+                "missing_reason": null,
+                "numerator": 12240.0,
+                "value": 0.85,
+                "window": "2025-08..2026-07"
+              },
+              "passenger_growth": {
+                "denominator": 12000.0,
+                "flags": [],
+                "metric": "passenger_growth",
+                "missing_reason": null,
+                "numerator": 12240.0,
+                "value": 0.020000000000000018,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              }
+            },
+            "BBB": {
+              "avg_taxi_out_min": {
+                "denominator": 4000,
+                "flags": [],
+                "metric": "avg_taxi_out_min",
+                "missing_reason": null,
+                "numerator": 60000.0,
+                "value": 15.0,
+                "window": "2026-07"
+              },
+              "delay_rate": {
+                "denominator": 4000,
+                "flags": [],
+                "metric": "delay_rate",
+                "missing_reason": null,
+                "numerator": 900,
+                "value": 0.225,
+                "window": "2026-07"
+              },
+              "departure_growth": {
+                "denominator": 120.0,
+                "flags": [],
+                "metric": "departure_growth",
+                "missing_reason": null,
+                "numerator": 126.0,
+                "value": 0.050000000000000044,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              },
+              "load_factor": {
+                "denominator": 15750.0,
+                "flags": [],
+                "metric": "load_factor",
+                "missing_reason": null,
+                "numerator": 12600.0,
+                "value": 0.8,
+                "window": "2025-08..2026-07"
+              },
+              "passenger_growth": {
+                "denominator": 12000.0,
+                "flags": [],
+                "metric": "passenger_growth",
+                "missing_reason": null,
+                "numerator": 12600.0,
+                "value": 0.050000000000000044,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              }
+            },
+            "CCC": {
+              "avg_taxi_out_min": {
+                "denominator": 1200,
+                "flags": [],
+                "metric": "avg_taxi_out_min",
+                "missing_reason": null,
+                "numerator": 18000.0,
+                "value": 15.0,
+                "window": "2026-07"
+              },
+              "delay_rate": {
+                "denominator": 1200,
+                "flags": [],
+                "metric": "delay_rate",
+                "missing_reason": null,
+                "numerator": 300,
+                "value": 0.25,
+                "window": "2026-07"
+              },
+              "departure_growth": {
+                "denominator": 120.0,
+                "flags": [],
+                "metric": "departure_growth",
+                "missing_reason": null,
+                "numerator": 129.60000000000002,
+                "value": 0.0800000000000003,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              },
+              "load_factor": {
+                "denominator": 17280.0,
+                "flags": [],
+                "metric": "load_factor",
+                "missing_reason": null,
+                "numerator": 12960.0,
+                "value": 0.75,
+                "window": "2025-08..2026-07"
+              },
+              "passenger_growth": {
+                "denominator": 12000.0,
+                "flags": [],
+                "metric": "passenger_growth",
+                "missing_reason": null,
+                "numerator": 12960.0,
+                "value": 0.08000000000000007,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              }
+            },
+            "DDD": {
+              "avg_taxi_out_min": {
+                "denominator": 40,
+                "flags": [
+                  "low_sample: 40 departed flights < 300"
+                ],
+                "metric": "avg_taxi_out_min",
+                "missing_reason": null,
+                "numerator": 600.0,
+                "value": 15.0,
+                "window": "2026-07"
+              },
+              "delay_rate": {
+                "denominator": 40,
+                "flags": [
+                  "low_sample: 40 departed flights < 300"
+                ],
+                "metric": "delay_rate",
+                "missing_reason": null,
+                "numerator": 15,
+                "value": 0.375,
+                "window": "2026-07"
+              },
+              "departure_growth": {
+                "denominator": 120.0,
+                "flags": [],
+                "metric": "departure_growth",
+                "missing_reason": null,
+                "numerator": 138.0,
+                "value": 0.1499999999999999,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              },
+              "load_factor": {
+                "denominator": 19714.285714285714,
+                "flags": [],
+                "metric": "load_factor",
+                "missing_reason": null,
+                "numerator": 13800.0,
+                "value": 0.7000000000000001,
+                "window": "2025-08..2026-07"
+              },
+              "passenger_growth": {
+                "denominator": 12000.0,
+                "flags": [],
+                "metric": "passenger_growth",
+                "missing_reason": null,
+                "numerator": 13800.0,
+                "value": 0.1499999999999999,
+                "window": "2025-08..2026-07 vs 2024-08..2025-07"
+              }
+            }
+          },
+          "ranges": [
+            {
+              "high": 0.1499999999999999,
+              "low": 0.020000000000000018,
+              "metric": "passenger_growth",
+              "n_values": 4,
+              "note": null,
+              "usable": true,
+              "weight": 0.3
+            },
+            {
+              "high": 0.85,
+              "low": 0.7000000000000001,
+              "metric": "load_factor",
+              "n_values": 4,
+              "note": null,
+              "usable": true,
+              "weight": 0.25
+            },
+            {
+              "high": 0.1499999999999999,
+              "low": 0.020000000000000018,
+              "metric": "departure_growth",
+              "n_values": 4,
+              "note": null,
+              "usable": true,
+              "weight": 0.15
+            },
+            {
+              "high": 0.375,
+              "low": 0.225,
+              "metric": "delay_rate",
+              "n_values": 4,
+              "note": null,
+              "usable": true,
+              "weight": 0.2
+            },
+            {
+              "high": 15.0,
+              "low": 15.0,
+              "metric": "avg_taxi_out_min",
+              "n_values": 4,
+              "note": "KPI does not differentiate this group (all values equal); normalized to 50",
+              "usable": true,
+              "weight": 0.1
+            }
+          ],
+          "rank_changes": {},
+          "reason": null,
+          "small_sample_airports": [
+            {
+              "affected_metrics": [
+                "delay_rate",
+                "cancellation_rate",
+                "avg_taxi_out_min",
+                "avg_dep_delay_min"
+              ],
+              "airport": "DDD",
+              "eligible_departures": 40,
+              "period": "2026-07",
+              "threshold": 300
+            }
+          ],
+          "status": "ranked",
+          "warnings": [
+            "KPI avg_taxi_out_min: all values equal"
+          ],
+          "weights_used": {
+            "avg_taxi_out_min": 0.1,
+            "delay_rate": 0.2,
+            "departure_growth": 0.15,
+            "load_factor": 0.25,
+            "passenger_growth": 0.3
+          }
+        },
+        "definitions": {
+          "avg_taxi_out_min": "mean(TaxiOut) over Origin=X, Cancelled=0, TaxiOut present",
+          "delay_rate": "count(Origin=X, Cancelled=0, DepDel15=1) / count(Origin=X, Cancelled=0, DepDel15 present)",
+          "departure_growth": "sum(total_departures, last 12 months) / sum(total_departures, previous 12 months) - 1; includes all-cargo departures",
+          "load_factor": "sum(total_passengers) / sum(total_seats), last 12 months. Airline seat utilization, not terminal utilization.",
+          "passenger_growth": "sum(total_passengers, last 12 months) / sum(total_passengers, previous 12 months) - 1"
+        },
+        "formula_version": "v1",
+        "provenance": [
+          {
+            "cache_status": "live",
+            "limitations": [],
+            "name": "fake api",
+            "observation_period": "2024-08..2026-07",
+            "retrieval_method": "SODA",
+            "retrieved_at": "t",
+            "source_type": "public_api",
+            "url": "u"
+          },
+          {
+            "cache_status": "snapshot",
+            "limitations": [],
+            "name": "fake snapshot",
+            "observation_period": "2026-07",
+            "retrieval_method": "file",
+            "retrieved_at": "t",
+            "source_type": "public_dataset_snapshot",
+            "url": "u"
+          }
+        ],
+        "result_type": "ranking",
+        "warnings": [
+          "KPI avg_taxi_out_min: all values equal",
+          "Small sample: DDD has 40 eligible departures in 2026-07 (< 300); its delay, cancellation and taxi-out values are statistically noisy. Included with this warning, not excluded.",
+          "Traffic metrics cover the last 12 months from the live BTS API; delay, cancellation and taxi-out metrics cover a single month from the on-time snapshot. Periods differ."
+        ],
+        "windows": {
+          "operations": "2026-07",
+          "traffic_current": "2025-08..2026-07",
+          "traffic_prior": "2024-08..2025-07"
+        }
+      },
+      "input": {
+        "region": "Fictional region"
+      },
+      "status": "success",
+      "tool": "rank_airports",
+      "tool_call_id": "call_rank"
+    }
+  ],
+  "incomplete": false,
+  "mode": "agent",
+  "notice": null,
+  "reply_markdown": "**AAA** ranks first in this fictional group. See the ranking evidence.",
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "sources": [
+    {
+      "cache_status": "live",
+      "limitations": [],
+      "name": "fake api",
+      "observation_period": "2024-08..2026-07",
+      "retrieval_method": "SODA",
+      "retrieved_at": "t",
+      "source_type": "public_api",
+      "url": "u"
+    },
+    {
+      "cache_status": "snapshot",
+      "limitations": [],
+      "name": "fake snapshot",
+      "observation_period": "2026-07",
+      "retrieval_method": "file",
+      "retrieved_at": "t",
+      "source_type": "public_dataset_snapshot",
+      "url": "u"
+    }
+  ],
+  "status": "complete",
+  "warnings": [
+    "KPI avg_taxi_out_min: all values equal",
+    "Small sample: DDD has 40 eligible departures in 2026-07 (< 300); its delay, cancellation and taxi-out values are statistically noisy. Included with this warning, not excluded.",
+    "Traffic metrics cover the last 12 months from the live BTS API; delay, cancellation and taxi-out metrics cover a single month from the on-time snapshot. Periods differ."
+  ]
+}

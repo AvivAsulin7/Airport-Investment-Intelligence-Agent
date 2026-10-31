@@ -1,0 +1,134 @@
+{
+  "errors": [],
+  "evidence": [
+    {
+      "artifact": {
+        "confidence": "high",
+        "coverage_notes": [
+          "Single month of route data; the route mix can be seasonal.",
+          "There is no universal long-haul definition; the threshold is a stated, adjustable choice."
+        ],
+        "data": {
+          "all_classes": {
+            "denominator": 850.0,
+            "missing_reason": null,
+            "numerator": 250.0,
+            "service_classes": [
+              "F",
+              "G",
+              "L",
+              "P"
+            ],
+            "share": 0.29411764705882354
+          },
+          "by_class": {
+            "F": {
+              "departures": 460.0,
+              "long_haul_departures": 60.0
+            },
+            "G": {
+              "departures": 270.0,
+              "long_haul_departures": 120.0
+            },
+            "L": {
+              "departures": 20.0,
+              "long_haul_departures": 0.0
+            },
+            "P": {
+              "departures": 100.0,
+              "long_haul_departures": 70.0
+            }
+          },
+          "definition": "departures performed from AAA with route DISTANCE >= 3,000 statute miles / all departures performed from AAA, service classes F, L",
+          "distance_bands": {
+            "0-999": {
+              "all_classes": 400.0,
+              "selected_classes": 400.0
+            },
+            "1,000-1,999": {
+              "all_classes": 170.0,
+              "selected_classes": 20.0
+            },
+            "2,000-2,999": {
+              "all_classes": 30.0,
+              "selected_classes": 0.0
+            },
+            "3,000-3,999": {
+              "all_classes": 60.0,
+              "selected_classes": 60.0
+            },
+            "4,000-4,999": {
+              "all_classes": 120.0,
+              "selected_classes": 0.0
+            },
+            "5,000-5,999": {
+              "all_classes": 70.0,
+              "selected_classes": 0.0
+            }
+          },
+          "notes": [],
+          "origin": "AAA",
+          "primary": {
+            "denominator": 480.0,
+            "missing_reason": null,
+            "numerator": 60.0,
+            "service_classes": [
+              "F",
+              "L"
+            ],
+            "share": 0.125
+          },
+          "threshold_miles": 3000
+        },
+        "definitions": {},
+        "formula_version": "v1",
+        "provenance": [
+          {
+            "cache_status": "snapshot",
+            "limitations": [],
+            "name": "fake snapshot",
+            "observation_period": "2026-07",
+            "retrieval_method": "file",
+            "retrieved_at": "t",
+            "source_type": "public_dataset_snapshot",
+            "url": "u"
+          }
+        ],
+        "result_type": "long_haul",
+        "warnings": [
+          "All-cargo classes (G, P) are 370 of 850 departures; the all-class percentage differs from the passenger-class percentage."
+        ],
+        "windows": {
+          "routes": "2026-07"
+        }
+      },
+      "input": {
+        "airport": "AAA"
+      },
+      "status": "success",
+      "tool": "get_long_haul_share",
+      "tool_call_id": "call_lh"
+    }
+  ],
+  "incomplete": false,
+  "mode": "agent",
+  "notice": null,
+  "reply_markdown": "Passenger long-haul share is shown with the all-class figure.",
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "sources": [
+    {
+      "cache_status": "snapshot",
+      "limitations": [],
+      "name": "fake snapshot",
+      "observation_period": "2026-07",
+      "retrieval_method": "file",
+      "retrieved_at": "t",
+      "source_type": "public_dataset_snapshot",
+      "url": "u"
+    }
+  ],
+  "status": "complete",
+  "warnings": [
+    "All-cargo classes (G, P) are 370 of 850 departures; the all-class percentage differs from the passenger-class percentage."
+  ]
+}

@@ -135,6 +135,10 @@ Small process decisions use the compact table in §2.1. That is a deliberate cho
 | 2026-10-30 | — | Paid Phase 7 run: Q1, follow-up, Q2, Q3, Q4 with Sonnet 5.5, 12 model calls, about $0.16, 4/4 pass; 3 issues found and fixed offline | 7 | Verified (fixes offline only) | |
 | 2026-10-30 | P-059 | `/api/chat` adds `status` (complete / completed_with_tool_errors / incomplete) and `errors`; contract documented and tested | 7 (verification) | PROPOSED (implemented; 113 offline pass) | |
 | 2026-10-30 | — | Focused paid verification (ranking + hub follow-up + exact count + grounding) via real `/api/chat`: PASS, 5 model calls, about $0.10 | 7 (verification) | Verified | |
+| 2026-10-30 | — | Phase 7 approved (P-053 to P-059); Phase 8 started | 7→8 | APPROVED | |
+| 2026-10-30 | P-060 to P-065 | Phase 8 UI: chart palette + Public Sans + flight-strip evidence, artifact-only numbers, react-markdown, backend-generated contract fixtures, test stack (jsdom 26 for Node 20), pending and duplicate guard | 8 | PROPOSED (implemented; 11 UI + 119 backend tests pass; 1 paid call, about $0.02–0.03) | |
+| 2026-10-31 | D-050 | `EN \| עברית` UI-only language toggle (dictionary, RTL/LTR via logical CSS, conversation preserved, AI text untouched) | 8 | APPROVED; implemented, 16 UI tests pass | |
+| 2026-10-31 | D-051 | Concise 3–5 sentence executive-summary replies by default; no forced language; warning rule reworded (never hide or contradict) | 8 | APPROVED; implemented in prompt; 122 backend tests pass; not verified with the real model | |
 
 ---
 
@@ -1597,6 +1601,159 @@ These are engine outputs for review, **not** hardcoded expectations.
 - No `aggregate_metrics` (deferred). Answers rely on 6 domain tools.
 - Sessions are in memory only. Model latency was about 10–15 s per question in the paid run (54.8 s for 5 turns).
 - `smoke_tool.py` remains as a test-only tool (not registered with the aviation agent).
+
+---
+
+## 3f. Phase 8: React Chat UI and End-to-End Integration (2026-10-30), implementation journal
+
+> These are UI choices within the approved design (D-022, D-030, D-032, D-034, D-041). They are labelled PROPOSED until reviewed. The backend is unchanged except for test fakes and a fixture generator. Results come only from commands actually run.
+
+### What was built (`frontend/src/`)
+| File | Responsibility |
+|---|---|
+| `types.ts` | TypeScript mirror of the `/api/chat` contract. Discriminated `Artifact` union by `result_type`. |
+| `api.ts` | `getHealth`, `postChat(message, sessionId)`, `postDemo(q)`. `ApiError` carries the HTTP status. `describeError` maps 503/502/409/422/network to plain-language messages and decides whether a retry is offered. |
+| `format.ts` | **Display formatting only** (percent, counts, minutes, labels). No aviation calculations. |
+| `notes.ts` | `dataNotes()` reads small-sample and partial-coverage airports **from evidence**, never from the prose. The four example prompts. |
+| `App.tsx` | Conversation state, `session_id` continuity, "New conversation", a pending state with an elapsed-seconds counter, a double-submit guard (`useRef`), health/model line, and the labelled deterministic-demo mode when no key is configured (D-032) |
+| `components/Conversation.tsx` | User and assistant messages, status banners (`completed_with_tool_errors` lists `errors`; `incomplete`), a collapsible "Data notes" summary with small-sample and partial counts plus all warnings, evidence list, per-turn sources, and error messages with "Try again" when the error is retryable |
+| `components/Evidence.tsx` | The **flight-strip** container: header cells (analysis, each data window, confidence), body, and a collapsible "Sources and limitations" footer (warnings, coverage notes, provenance with source type, period and retrieval time). Error strip. Airport-lookup and metrics views. |
+| `components/Ranking.tsx` | Rank, airport and hub size, score bar (0–100 from `score`), coverage, raw KPI per column with its weight, small-sample and partial badges, unscored rows, interpretation callout |
+| `components/Comparison.tsx` | Metrics × airports with numerator/denominator. **Backend-computed** absolute and relative differences vs the baseline. Small-sample badges. |
+| `components/LongHaul.tsx` | Two headline figures (selected classes vs all classes), threshold definition, departures by service class, distance-band bars (selected vs all) |
+| `components/DemandProfile.tsx` | Three blocks: observed demand (incl. vs 2019), capacity-pressure indicators with a peer-percentile marker and "k of n", delay-cause stacked bar, and a highlighted **"Unmet demand: not measured"** block with the backend statement |
+| `components/Composer.tsx` | Textarea (Enter sends, Shift+Enter adds a new line, 2,000-character cap), disabled while pending or in demo mode |
+| `index.css` | Design tokens and responsive layout (single column, tables scroll horizontally on mobile), dark mode, visible focus, reduced-motion respected |
+
+### Design decisions
+#### P-060: Visual direction (aeronautical-chart palette, Public Sans, evidence as flight strips)
+- **Palette (from FAA aeronautical charts):** chart paper `#F3F5F2`, ink navy `#1B2A38`, Class B airspace blue `#2C5F8A`, airspace magenta `#9B2F6A` (reserved for limitations and unmet demand), amber `#A86A12` (small samples), green `#2F7A55` (live API, high confidence).
+- **Type:** **Public Sans**, the US government design-system typeface, which matches public BTS/FAA data. Loaded from Google Fonts with a system fallback, and tabular figures throughout.
+- **Signature element:** each evidence item is styled as an **air-traffic-control flight progress strip**. A coloured band shows the result type, header cells show the analysis, data windows, and confidence, and the data sits below. Everything else is kept quiet.
+- **Alternatives** *[retrospective]*:
+  - A generic card dashboard. Con: templated look.
+  - A two-pane chat + inspector. Con: more state, and weak on mobile.
+  - A dark FIDS (departure-board) theme. Con: a cliché, and low legibility for dense tables.
+- **Interview line:** "The UI borrows from aviation's own documents: chart colours for meaning, and ATC flight strips for evidence, so provenance and periods sit in the header of every result."
+
+#### P-061: Evidence rendered only from `evidence[].artifact` (D-030 applied)
+- Every number in the strips comes from artifact fields. The frontend only formats it (×100 for %, thousands separators).
+- Comparisons show the **backend's** differences, and percentiles come from the backend. The model's prose is rendered as Markdown next to the evidence, but nothing is parsed out of it.
+- **Validation:** the UI tests assert that rendered scores, ranks, shares, and numerator/denominator text equal the fixture artifact values.
+
+#### P-062: Markdown via `react-markdown` + `remark-gfm` (2 runtime dependencies)
+- **Why:** the model's replies use bold text, lists, and tables. `react-markdown` renders without raw HTML by default, so it is safe against injection.
+- **Alternatives:** plain text (tables unreadable); a hand-written parser (error-prone); `dangerouslySetInnerHTML` with a markdown library (an XSS risk).
+
+#### P-063: Contract fixtures generated by the backend, type-checked by the frontend
+- `backend/tests/test_contract_fixtures.py` produces 6 `/api/chat` responses (ranking, comparison, long-haul, profile, tool error, incomplete) through the **real** FastAPI + LangChain tools + engine path, with the scripted fake model and **fictional** fake data (no real BTS values, D-037).
+  - With `UPDATE_FIXTURES=1` it writes them to `frontend/src/test/fixtures/`.
+  - Without the flag, it **fails on drift**.
+- The frontend imports them typed as `ChatResponse`, so `tsc -b` checks the contract, and Vitest renders them.
+- The test fakes gained `FakeRoutes`, arrival causes, and `search` (test-only changes).
+- **Alternatives:** hand-written TS fixtures (they can silently diverge); OpenAPI codegen (an extra toolchain).
+
+#### P-064: Test stack `vitest@5.0.5` + `@testing-library/react@16.3.3` + `@testing-library/dom@10.4.2` + `jsdom@26.1.0` (dev only)
+- **Problem 1:** `npm install -D vitest …` crashed inside npm's resolver (`TypeError: Cannot read properties of null (reading 'edgesOut')` in arborist `#loadPeerSet`). This is an npm bug triggered by vitest 5's large optional-peer set.
+  - **Resolution:** install the test dev dependencies once with `--legacy-peer-deps`.
+  - **Verified:** a later plain `npm install` from the lockfile succeeds with 0 vulnerabilities. Reviewers need no flag.
+- **Problem 2:** `jsdom@30.1.3` failed at worker start (`TypeError … reading 'bind'` in `undici/lib/interceptor/decompress.js`). Its engines field requires **Node ≥ 22.22**, and this machine has Node 20.20.1, which Vite 8 supports.
+  - **Resolution:** `jsdom@26.1.0` (Node ≥ 18).
+  - **Alternative rejected:** requiring reviewers to upgrade Node.
+- **Interview line:** "Two dependency issues came from version and Node mismatches. I read the actual error and engines field and chose the version that fits the documented Node range instead of forcing an upgrade."
+
+#### P-065: Pending and duplicate-submission handling
+- A `useRef` in-flight guard plus disabled composer, example buttons, and "New conversation" while a request runs. An elapsed-seconds counter is shown, because answers take about 10–20 s.
+- **Alternative:** an AbortController-based cancel. Deferred (scope).
+
+### Test and build results (run 2026-10-30)
+- **Frontend:**
+  - `npm test` → **11 passed**: 6 evidence-view and status tests on the fixtures; session continuity and reset; loading and duplicate block; 502 → "Try again" re-sends the same question; 409 → no retry; demo mode without a key (calls `/api/demo/q1`, never `/api/chat`, composer disabled).
+  - `npm run lint` (oxlint) → **0 warnings**. Three warnings from the first run were fixed: helpers moved out of component files, and the timer reset moved out of the effect.
+  - `npm run build` (`tsc -b` + Vite) → passes. The JS bundle is 406 kB (124 kB gzip), most of it `react-markdown`.
+- **First-run test failure (test bug):** the duplicate-submission test clicked the example buttons, which correctly disappear after the first question. It was rewritten to resubmit the form while pending.
+- **Backend:** `pytest` → **119 passed** (includes the 6 fixture-drift checks).
+- **End to end (real servers):**
+  - Single server: `GET /` 200 (built SPA, title "Airport Investment Research"), built JS 200, `/api/health` 200 (`llm_configured: true`, model `claude-sonnet-5-5`, BTS reachable, latest 2026-07), `/api/demo/q3` → real ANC passenger long-haul share 4.24% (window 2026-07).
+  - Vite dev: `GET /` 200, proxied `/api/health` 200.
+  - **One real paid call through the Vite proxy:** "Which metrics can you compute? Answer in two sentences." → `status: complete`, `list_metrics` evidence, and the documented key set. **Estimated cost ≈ $0.02–0.03** (2 model calls). Exact tokens are not exposed by `/api/chat`; this estimate is based on Phase 7's measured average of about 4.9k input tokens per call. No other paid calls were made in Phase 8.
+
+### Phase 8 follow-up: UI language toggle and concise answers (2026-10-31)
+
+#### D-050: `EN | עברית` toggle for the frontend UI only
+- **Phase / status:** 8, **APPROVED** (user requirement), implemented.
+- **User decisions:**
+  - English is the default.
+  - Hebrew translates all static UI text (header, buttons, evidence titles and column headings, badges, statuses, tooltips/aria labels, error messages).
+  - Hebrew uses RTL and English LTR.
+  - Codes, numbers and dates keep their formatting.
+  - The AI's messages are **not** translated, and the system prompt is **not** changed to force a language (the AI already answers Hebrew questions in Hebrew).
+  - Switching must not reset the conversation, session or evidence.
+  - A lightweight dictionary, no i18n library.
+- **Implementation:**
+  - `src/i18n.ts`: `en` and `he` dictionaries. `he: Dict = typeof en`, so TypeScript fails the build if a Hebrew key is missing. Parameterized strings are functions. A React `LangContext` provides `useT()`.
+  - `App.tsx`: the `lang` state, remembered in `localStorage` inside try/catch (works without storage). Sets `dir`/`lang` on the app root and on `<html>`. The toggle is a `role="group"` with two `aria-pressed` buttons. Conversation, `sessionId` and evidence live in separate state and are untouched by the toggle.
+  - **Error messages:** errors store the HTTP status and server detail (`classifyError`) and are worded at render time (`describeError(info, t)`), so an error already on screen switches language too.
+  - **CSS:** all left/right rules converted to logical properties (`border-inline-start`, `padding-inline-*`, `inset-inline-*`, `text-align: start/end`, `margin-inline-*`), so one stylesheet mirrors correctly. Numbers, codes and fractions use `unicode-bidi: plaintext`. Distance bands are forced LTR. Hebrew falls back to Segoe UI, Arial Hebrew or Noto Sans Hebrew.
+  - **Text from the backend or AI:** the reply, warnings, coverage notes, interpretations, missing-data reasons, source names and formulas are shown **as received**. In Hebrew mode they are wrapped in `<span lang="en" dir="ltr">` (`Orig`) so English sentences render correctly inside RTL.
+    - The AI reply and user messages use `dir="auto"`, so a Hebrew answer reads RTL even when the UI is English, and vice versa.
+    - Exception: the fixed "unmet demand: not measured" statement has a Hebrew UI translation, because it is a constant explanatory text, not data.
+  - **Example prompts:** the four buttons show their question in the UI language and **send the text as displayed**, so in Hebrew mode the agent gets a Hebrew question and answers in Hebrew. The behaviour is unchanged in English.
+- **Alternatives** *[retrospective]*:
+  - `react-i18next` or `i18next` (rejected by the user: heavy).
+  - Machine-translating backend warnings in the UI (unreliable; it would alter data text).
+  - Translating the AI reply (out of scope, and would change grounded content).
+- **Tests (frontend, 5 new, all passing):**
+  - default LTR/English → Hebrew RTL (`dir`, `lang`, `<html dir>`, heading, buttons, input label, `aria-pressed`) → back to LTR;
+  - switching keeps the question, the AI reply, the evidence and the `session_id`; a Hebrew follow-up reuses the session; evidence headings and badges are translated while codes and scores are unchanged;
+  - errors re-render in the new language, and Hebrew example prompts are sent as displayed;
+  - all four evidence views render under the Hebrew context (incl. "ביקוש שאינו נענה: לא נמדד");
+  - the language choice is remembered.
+- **Known limitation:** text produced by the backend or AI (warnings, interpretations, coverage notes) stays in English in Hebrew mode, clearly isolated. This follows the "translate static frontend UI text" scope.
+- **Interview line:** "The toggle only changes the interface: one typed dictionary, logical CSS so the same stylesheet mirrors to RTL, and the AI's answers and data text are shown exactly as produced."
+
+#### D-052: Reply-language note when the AI reply's language differs from the UI language
+- **Phase / status:** 8, **APPROVED** (user chose option 1 of 4, 2026-10-31), implemented.
+- **Context:** the user asked a question in Hebrew and then switched the UI to English. The screen mixed a Hebrew AI reply with English UI labels. This is expected under D-050 (the AI reply is never translated).
+- **Options discussed:**
+  1. *[selected]* Keep the behaviour and explain it in the UI.
+  2. The AI answers in the UI language (would force a language, reversing D-050).
+  3. A per-reply "translate" button (a paid call each time).
+  4. The UI language follows the question's language automatically.
+- **Implementation:**
+  - `textLang()` in `notes.ts` makes a display-only Hebrew-vs-Latin script check of the reply.
+  - When the reply language ≠ the UI language, a small muted note appears above the reply: "The assistant replied in the language of your question. The interface language changes labels only; the evidence and numbers are the same." (Hebrew equivalent in Hebrew mode.)
+  - There is no note when the languages match. The reply text is unchanged.
+- **Test:** `notes when the reply language differs from the interface language, and only then` covers 4 combinations (he/en reply × he/en UI). Frontend: **17 passed**, lint clean, build passes.
+- **Limitation:** the script heuristic counts letters, so a reply with mixed scripts is classified by its majority. It is display-only and has no effect on data.
+
+#### D-051: Concise executive-summary answers by default
+- **Phase / status:** 8, **APPROVED** (user requirement), implemented in the system prompt.
+- **Note:** the user called this a "previous requirement". It was **not present in this conversation's record**, so it was implemented from the description given here.
+- **Change (`app/agent/prompts.py`):**
+  - The default reply is a **3–5 sentence executive summary** (direct answer, 1–2 key evidence points, the most important caveat). It does **not** repeat the evidence tables or list every number, and has no tables unless asked. Detail only on request.
+  - The earlier rules "carry over every warning … never drop a small-sample warning" and "always state the data periods" were reworded to fit the length limit:
+    - mention the warnings that matter most (especially small samples for highlighted airports);
+    - **never hide or contradict a warning**;
+    - the complete warning list is always in the evidence panel (D-049, structured warnings, unchanged);
+    - periods are stated briefly when they matter.
+  - **No language instruction was added**, so Hebrew questions still get Hebrew answers.
+- **Validation:** `tests/test_prompts.py` (3 tests) checks the 3–5 sentence rule and no-table-repetition, that no instruction forces English or Hebrew, and that the grounding and warning rules remain. Backend `pytest` → **122 passed**.
+- **Not verified with the real model** (paid tests not run, per instruction). Actual reply length and language behaviour need one manual check in the UI.
+- **Tradeoff:** shorter prose relies on the evidence panel for the full detail, which is what the UI is designed to show (D-030). The risk is that a relevant caveat is omitted from the prose, but it remains visible in "Data notes" and the strip footers.
+
+#### Results (2026-10-31)
+- Frontend: `npm test` → **16 passed**; `npm run lint` → 0 warnings; `npm run build` → passes (420 kB JS, 129 kB gzip).
+- Backend: `pytest` → **122 passed** (+3 prompt tests).
+- Free E2E check: the single server serves the new build (`GET /` 200, JS 200, Hebrew strings present), and `/api/demo/q1` 200.
+- **Paid LLM calls: none.**
+
+### Remaining limitations
+- **No visual screenshot review was possible in this environment** (no browser tool). Layout and responsiveness are covered by CSS rules and DOM tests, not visual checks. The user should open the app to review.
+- Public Sans loads from Google Fonts. Offline, it falls back to system fonts.
+- No request cancel button. In-memory sessions are lost on a server restart.
+- The bundle size (406 kB) is dominated by the Markdown renderer, which is acceptable for a demo.
+- `aggregate_metrics` and rank-change summaries are still deferred (P-058).
 
 ---
 

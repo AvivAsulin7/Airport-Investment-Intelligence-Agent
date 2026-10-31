@@ -15,10 +15,11 @@ role, history or reputation). Describe airports only with what the tools returne
 FAA hub class and service level.
 - Quote values as the tools return them, with their units and time windows. Prefer pointing to the evidence \
 tables the user sees next to your answer instead of repeating long lists of numbers.
-- Always state the data periods (for example the 12-month traffic window and the single on-time/route month) \
-and the sources, distinguishing the live BTS public API from public dataset snapshots.
-- Carry over every warning from the tool result that matters to the answer, especially small-sample \
-warnings, partial coverage, missing data and period mismatches. Never drop a small-sample warning.
+- Briefly state the data periods (for example the 12-month traffic window and the single on-time/route \
+month) when they matter to the answer; the full sources are shown in the evidence.
+- Mention the warnings that matter most to the answer, especially small-sample warnings for airports you \
+highlight, partial coverage and missing data. Never hide or contradict a warning; the complete list of \
+warnings is always shown to the user in the evidence panel.
 - If a tool returns an error, explain the limitation plainly or correct your request; never guess the result.
 
 Interpretation rules
@@ -42,6 +43,12 @@ question or state the assumption.
 parameters (for example different weights, a hub-size filter, another threshold or other airports).
 - These tools work for any US airport, state or FAA region in the data, not only the examples you may \
 have seen.
-- Keep answers concise and structured: the direct answer first, then key evidence, then assumptions and \
-limitations.
+
+Answer format
+- By default, reply with a concise executive summary of 3-5 sentences: the direct answer, the one or two \
+most important evidence points, and the key caveat (data period, small-sample or partial-coverage warning, \
+or limitation) that matters most for this answer.
+- Do not repeat the evidence tables or list every airport and number: the user sees the full structured \
+evidence, sources and warnings next to your answer. Do not add tables unless the user asks for one.
+- Give a longer, detailed explanation only when the user explicitly asks for detail.
 """

@@ -1,0 +1,215 @@
+{
+  "errors": [],
+  "evidence": [
+    {
+      "artifact": {
+        "confidence": "high",
+        "coverage_notes": [],
+        "data": {
+          "metrics": [
+            {
+              "category": "direct",
+              "formula": "sum(total_passengers, last 12 months) / sum(total_passengers, previous 12 months) - 1",
+              "id": "passenger_growth",
+              "label": "Passenger growth (T12M vs prior 12 months)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "ratio"
+            },
+            {
+              "category": "proxy",
+              "formula": "sum(total_passengers) / sum(total_seats), last 12 months. Airline seat utilization, not terminal utilization.",
+              "id": "load_factor",
+              "label": "Seat load factor (T12M)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "ratio"
+            },
+            {
+              "category": "direct",
+              "formula": "sum(total_departures, last 12 months) / sum(total_departures, previous 12 months) - 1; includes all-cargo departures",
+              "id": "departure_growth",
+              "label": "Flight (departure) growth (T12M vs prior 12 months)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "ratio"
+            },
+            {
+              "category": "proxy",
+              "formula": "count(Origin=X, Cancelled=0, DepDel15=1) / count(Origin=X, Cancelled=0, DepDel15 present)",
+              "id": "delay_rate",
+              "label": "Departure delay rate (>=15 min)",
+              "rankable": true,
+              "source": "BTS on-time snapshot",
+              "unit": "ratio"
+            },
+            {
+              "category": "proxy",
+              "formula": "mean(TaxiOut) over Origin=X, Cancelled=0, TaxiOut present",
+              "id": "avg_taxi_out_min",
+              "label": "Average taxi-out time",
+              "rankable": true,
+              "source": "BTS on-time snapshot",
+              "unit": "minutes"
+            },
+            {
+              "category": "proxy",
+              "formula": "count(Origin=X, Cancelled=1) / count(Origin=X)",
+              "id": "cancellation_rate",
+              "label": "Cancellation rate",
+              "rankable": true,
+              "source": "BTS on-time snapshot",
+              "unit": "ratio"
+            },
+            {
+              "category": "direct",
+              "formula": "sum(total_passengers, last 12 months); min-max normalized on log10 when used in scoring",
+              "id": "passengers_t12m",
+              "label": "Enplaned passengers (T12M)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "passengers"
+            },
+            {
+              "category": "direct",
+              "formula": "sum(total_departures, last 12 months)",
+              "id": "departures_t12m",
+              "label": "Departures performed (T12M, all service classes)",
+              "rankable": false,
+              "source": "BTS API (live)",
+              "unit": "departures"
+            },
+            {
+              "category": "direct",
+              "formula": "mean(DepDelay) over Origin=X, Cancelled=0, DepDelay present (early departures negative)",
+              "id": "avg_dep_delay_min",
+              "label": "Average departure delay",
+              "rankable": false,
+              "source": "BTS on-time snapshot",
+              "unit": "minutes"
+            }
+          ]
+        },
+        "definitions": {},
+        "formula_version": null,
+        "provenance": [],
+        "result_type": "metrics",
+        "warnings": [],
+        "windows": {}
+      },
+      "input": {},
+      "status": "success",
+      "tool": "list_metrics",
+      "tool_call_id": "call_loop_0"
+    },
+    {
+      "artifact": {
+        "confidence": "high",
+        "coverage_notes": [],
+        "data": {
+          "metrics": [
+            {
+              "category": "direct",
+              "formula": "sum(total_passengers, last 12 months) / sum(total_passengers, previous 12 months) - 1",
+              "id": "passenger_growth",
+              "label": "Passenger growth (T12M vs prior 12 months)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "ratio"
+            },
+            {
+              "category": "proxy",
+              "formula": "sum(total_passengers) / sum(total_seats), last 12 months. Airline seat utilization, not terminal utilization.",
+              "id": "load_factor",
+              "label": "Seat load factor (T12M)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "ratio"
+            },
+            {
+              "category": "direct",
+              "formula": "sum(total_departures, last 12 months) / sum(total_departures, previous 12 months) - 1; includes all-cargo departures",
+              "id": "departure_growth",
+              "label": "Flight (departure) growth (T12M vs prior 12 months)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "ratio"
+            },
+            {
+              "category": "proxy",
+              "formula": "count(Origin=X, Cancelled=0, DepDel15=1) / count(Origin=X, Cancelled=0, DepDel15 present)",
+              "id": "delay_rate",
+              "label": "Departure delay rate (>=15 min)",
+              "rankable": true,
+              "source": "BTS on-time snapshot",
+              "unit": "ratio"
+            },
+            {
+              "category": "proxy",
+              "formula": "mean(TaxiOut) over Origin=X, Cancelled=0, TaxiOut present",
+              "id": "avg_taxi_out_min",
+              "label": "Average taxi-out time",
+              "rankable": true,
+              "source": "BTS on-time snapshot",
+              "unit": "minutes"
+            },
+            {
+              "category": "proxy",
+              "formula": "count(Origin=X, Cancelled=1) / count(Origin=X)",
+              "id": "cancellation_rate",
+              "label": "Cancellation rate",
+              "rankable": true,
+              "source": "BTS on-time snapshot",
+              "unit": "ratio"
+            },
+            {
+              "category": "direct",
+              "formula": "sum(total_passengers, last 12 months); min-max normalized on log10 when used in scoring",
+              "id": "passengers_t12m",
+              "label": "Enplaned passengers (T12M)",
+              "rankable": true,
+              "source": "BTS API (live)",
+              "unit": "passengers"
+            },
+            {
+              "category": "direct",
+              "formula": "sum(total_departures, last 12 months)",
+              "id": "departures_t12m",
+              "label": "Departures performed (T12M, all service classes)",
+              "rankable": false,
+              "source": "BTS API (live)",
+              "unit": "departures"
+            },
+            {
+              "category": "direct",
+              "formula": "mean(DepDelay) over Origin=X, Cancelled=0, DepDelay present (early departures negative)",
+              "id": "avg_dep_delay_min",
+              "label": "Average departure delay",
+              "rankable": false,
+              "source": "BTS on-time snapshot",
+              "unit": "minutes"
+            }
+          ]
+        },
+        "definitions": {},
+        "formula_version": null,
+        "provenance": [],
+        "result_type": "metrics",
+        "warnings": [],
+        "windows": {}
+      },
+      "input": {},
+      "status": "success",
+      "tool": "list_metrics",
+      "tool_call_id": "call_loop_1"
+    }
+  ],
+  "incomplete": true,
+  "mode": "agent",
+  "notice": null,
+  "reply_markdown": "Analysis incomplete: the agent reached its tool-call limit for this question. The evidence gathered so far is shown; please narrow the question.",
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "sources": [],
+  "status": "incomplete",
+  "warnings": []
+}

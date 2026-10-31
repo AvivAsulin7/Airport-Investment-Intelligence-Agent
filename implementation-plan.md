@@ -26,8 +26,8 @@ The budget is the approved **24 h planning target with 3 h contingency** (D-031)
 | 4 | Project Foundation + smoke tests | **Approved.** Real-LLM smoke tests **PASS with `claude-sonnet-5-5`** (2026-10-30, D-047), after earlier blocks for no key and then no credits. | 1.0 | 1.5 |
 | 5 | Aviation Data Integration | **Approved** (P-038 to P-045; Sonnet default D-048) | 3.0 | 3.0 |
 | 6 | Deterministic Analytics Engine | **Approved** (P-046 to P-052, D-049) | 3.0 | 2.5 |
-| 7 | LangChain Agent & Conversation | **Implemented and verified, awaiting final approval.** 113 offline, 7 live and 4 + 1 paid Sonnet tests pass (about $0.26 total). Response contract with `status` (P-059). `aggregate_metrics` and rank_changes deferred (P-058). | 4.0 | 3.0 |
-| 8 | React Chat UI & End-to-End Integration | Pending | 3.0 | 3.5 |
+| 7 | LangChain Agent & Conversation | **Approved** (P-053 to P-059) | 4.0 | 3.0 |
+| 8 | React Chat UI & End-to-End Integration | **Implemented, awaiting review.** UI + `EN \| עברית` toggle (D-050) + concise replies (D-051). 16 UI tests, lint and build pass; 122 backend tests. E2E single-server and Vite proxy verified. 1 paid call in total. Visual review pending (no browser tool). | 3.0 | 3.5 |
 | 9 | Testing, Documentation & Delivery | Pending | 3.0 | 2.5 |
 | | **Contingency** | Reserved | 2.5 | **3.0** |
 | | **Total** | | 24.0 | **24.0** |

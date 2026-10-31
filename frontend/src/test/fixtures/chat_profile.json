@@ -1,0 +1,287 @@
+{
+  "errors": [],
+  "evidence": [
+    {
+      "artifact": {
+        "confidence": "medium",
+        "coverage_notes": [
+          "Peer percentile = % of peer airports with a strictly lower value (higher = more pressure).",
+          "Delay data covers BTS reporting carriers only."
+        ],
+        "data": {
+          "airport": "AAA",
+          "capacity_pressure": {
+            "avg_taxi_out_min": {
+              "peers_with_data": 0,
+              "percentile": null,
+              "rank_desc": null,
+              "value": 15.0
+            },
+            "cancellation_rate": {
+              "peers_with_data": 0,
+              "percentile": null,
+              "rank_desc": null,
+              "value": 0.0011098779134295228
+            },
+            "delay_rate": {
+              "peers_with_data": 0,
+              "percentile": null,
+              "rank_desc": null,
+              "value": 0.2777777777777778
+            },
+            "load_factor": {
+              "peers_with_data": 0,
+              "percentile": null,
+              "rank_desc": null,
+              "value": 0.85
+            }
+          },
+          "delay_causes": [
+            {
+              "cause": "national_airspace_system",
+              "minutes": 300.0,
+              "share": 0.5
+            },
+            {
+              "cause": "late_arriving_aircraft",
+              "minutes": 150.0,
+              "share": 0.25
+            },
+            {
+              "cause": "carrier",
+              "minutes": 120.0,
+              "share": 0.2
+            },
+            {
+              "cause": "weather",
+              "minutes": 30.0,
+              "share": 0.05
+            },
+            {
+              "cause": "security",
+              "minutes": 0.0,
+              "share": 0.0
+            }
+          ],
+          "observed_demand": {
+            "departure_growth": {
+              "denominator": 120.0,
+              "flags": [],
+              "metric": "departure_growth",
+              "missing_reason": null,
+              "numerator": 122.39999999999999,
+              "value": 0.020000000000000018,
+              "window": "2025-08..2026-07 vs 2024-08..2025-07"
+            },
+            "departures_t12m": {
+              "denominator": null,
+              "flags": [],
+              "metric": "departures_t12m",
+              "missing_reason": null,
+              "numerator": null,
+              "value": 122.39999999999999,
+              "window": "2025-08..2026-07"
+            },
+            "passenger_growth": {
+              "denominator": 12000.0,
+              "flags": [],
+              "metric": "passenger_growth",
+              "missing_reason": null,
+              "numerator": 12240.0,
+              "value": 0.020000000000000018,
+              "window": "2025-08..2026-07 vs 2024-08..2025-07"
+            },
+            "passengers_2019": {
+              "denominator": null,
+              "flags": [],
+              "metric": "passengers_2019",
+              "missing_reason": null,
+              "numerator": null,
+              "t12m_vs_2019": 0.020000000000000018,
+              "value": 12000.0,
+              "window": "2019-01..2019-12"
+            },
+            "passengers_t12m": {
+              "denominator": null,
+              "flags": [],
+              "metric": "passengers_t12m",
+              "missing_reason": null,
+              "numerator": null,
+              "value": 12240.0,
+              "window": "2025-08..2026-07"
+            }
+          },
+          "peer_group": "FAA hub class L",
+          "peers": [],
+          "small_sample_airports": [],
+          "subject_metrics": {
+            "avg_dep_delay_min": {
+              "denominator": 9000,
+              "flags": [],
+              "metric": "avg_dep_delay_min",
+              "missing_reason": null,
+              "numerator": 0.0,
+              "value": 0.0,
+              "window": "2026-07"
+            },
+            "avg_taxi_out_min": {
+              "denominator": 9000,
+              "flags": [],
+              "metric": "avg_taxi_out_min",
+              "missing_reason": null,
+              "numerator": 135000.0,
+              "value": 15.0,
+              "window": "2026-07"
+            },
+            "cancellation_rate": {
+              "denominator": 9010,
+              "flags": [],
+              "metric": "cancellation_rate",
+              "missing_reason": null,
+              "numerator": 10,
+              "value": 0.0011098779134295228,
+              "window": "2026-07"
+            },
+            "delay_rate": {
+              "denominator": 9000,
+              "flags": [],
+              "metric": "delay_rate",
+              "missing_reason": null,
+              "numerator": 2500,
+              "value": 0.2777777777777778,
+              "window": "2026-07"
+            },
+            "departure_growth": {
+              "denominator": 120.0,
+              "flags": [],
+              "metric": "departure_growth",
+              "missing_reason": null,
+              "numerator": 122.39999999999999,
+              "value": 0.020000000000000018,
+              "window": "2025-08..2026-07 vs 2024-08..2025-07"
+            },
+            "departures_t12m": {
+              "denominator": null,
+              "flags": [],
+              "metric": "departures_t12m",
+              "missing_reason": null,
+              "numerator": null,
+              "value": 122.39999999999999,
+              "window": "2025-08..2026-07"
+            },
+            "load_factor": {
+              "denominator": 14400.0,
+              "flags": [],
+              "metric": "load_factor",
+              "missing_reason": null,
+              "numerator": 12240.0,
+              "value": 0.85,
+              "window": "2025-08..2026-07"
+            },
+            "passenger_growth": {
+              "denominator": 12000.0,
+              "flags": [],
+              "metric": "passenger_growth",
+              "missing_reason": null,
+              "numerator": 12240.0,
+              "value": 0.020000000000000018,
+              "window": "2025-08..2026-07 vs 2024-08..2025-07"
+            },
+            "passengers_t12m": {
+              "denominator": null,
+              "flags": [],
+              "metric": "passengers_t12m",
+              "missing_reason": null,
+              "numerator": null,
+              "value": 12240.0,
+              "window": "2025-08..2026-07"
+            }
+          },
+          "unmet_demand": {
+            "measured": false,
+            "statement": "Unmet flight demand is not measured: it is demand that did not materialize, so it does not appear in traffic or delay data. The indicators below are consistent with (or against) capacity pressure but do not prove it. Delays have many causes (weather, airline operations, national airspace system), load factor reflects airline capacity choices, and growth may be recovery rather than a shortfall."
+          }
+        },
+        "definitions": {
+          "avg_taxi_out_min": "mean(TaxiOut) over Origin=X, Cancelled=0, TaxiOut present",
+          "cancellation_rate": "count(Origin=X, Cancelled=1) / count(Origin=X)",
+          "delay_rate": "count(Origin=X, Cancelled=0, DepDel15=1) / count(Origin=X, Cancelled=0, DepDel15 present)",
+          "departure_growth": "sum(total_departures, last 12 months) / sum(total_departures, previous 12 months) - 1; includes all-cargo departures",
+          "load_factor": "sum(total_passengers) / sum(total_seats), last 12 months. Airline seat utilization, not terminal utilization.",
+          "passenger_growth": "sum(total_passengers, last 12 months) / sum(total_passengers, previous 12 months) - 1"
+        },
+        "formula_version": "v1",
+        "provenance": [
+          {
+            "cache_status": "live",
+            "limitations": [],
+            "name": "fake api",
+            "observation_period": "2024-08..2026-07",
+            "retrieval_method": "SODA",
+            "retrieved_at": "t",
+            "source_type": "public_api",
+            "url": "u"
+          },
+          {
+            "cache_status": "snapshot",
+            "limitations": [],
+            "name": "fake snapshot",
+            "observation_period": "2026-07",
+            "retrieval_method": "file",
+            "retrieved_at": "t",
+            "source_type": "public_dataset_snapshot",
+            "url": "u"
+          }
+        ],
+        "result_type": "demand_profile",
+        "warnings": [
+          "Traffic metrics cover the last 12 months from the live BTS API; delay, cancellation and taxi-out metrics cover a single month from the on-time snapshot. Periods differ.",
+          "Delay causes refer to arrivals into the airport and are airline-reported attributions."
+        ],
+        "windows": {
+          "operations": "2026-07",
+          "traffic_current": "2025-08..2026-07",
+          "traffic_prior": "2024-08..2025-07"
+        }
+      },
+      "input": {
+        "airport": "AAA"
+      },
+      "status": "success",
+      "tool": "get_demand_pressure_profile",
+      "tool_call_id": "call_profile"
+    }
+  ],
+  "incomplete": false,
+  "mode": "agent",
+  "notice": null,
+  "reply_markdown": "Unmet demand is not measured; indicators are shown.",
+  "session_id": "00000000-0000-4000-8000-000000000000",
+  "sources": [
+    {
+      "cache_status": "live",
+      "limitations": [],
+      "name": "fake api",
+      "observation_period": "2024-08..2026-07",
+      "retrieval_method": "SODA",
+      "retrieved_at": "t",
+      "source_type": "public_api",
+      "url": "u"
+    },
+    {
+      "cache_status": "snapshot",
+      "limitations": [],
+      "name": "fake snapshot",
+      "observation_period": "2026-07",
+      "retrieval_method": "file",
+      "retrieved_at": "t",
+      "source_type": "public_dataset_snapshot",
+      "url": "u"
+    }
+  ],
+  "status": "complete",
+  "warnings": [
+    "Traffic metrics cover the last 12 months from the live BTS API; delay, cancellation and taxi-out metrics cover a single month from the on-time snapshot. Periods differ.",
+    "Delay causes refer to arrivals into the airport and are airline-reported attributions."
+  ]
+}
