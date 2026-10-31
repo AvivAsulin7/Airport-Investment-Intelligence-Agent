@@ -3,9 +3,9 @@
 from langchain_core.messages import AIMessage, ToolMessage
 
 from app.agent.agent import build_agent, extract_turn
-from app.agent.smoke_tool import lookup_test_value
 
 from .conftest import ToolCallingFakeModel, tool_call
+from .smoke_tool import lookup_test_value
 
 
 def _agent(replies, max_model_calls=8):

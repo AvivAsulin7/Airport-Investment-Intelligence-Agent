@@ -1,0 +1,4 @@
+# Processed data snapshots are verified by SHA-256 at startup (manifest.json), so Git must store
+# and check them out byte-for-byte on every OS: no end-of-line conversion.
+data/processed/*.csv -text
+data/processed/manifest.json -text

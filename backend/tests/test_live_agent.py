@@ -20,6 +20,8 @@ from app.data.layer import load_data_layer
 from app.engine.service import AnalyticsService
 from app.settings import get_settings
 
+from .answer_checks import MAX_WORDS, ORDINARY_WORDS, format_problems, ungrounded_numbers
+
 settings = get_settings()
 pytestmark = [
     pytest.mark.llm,
@@ -60,33 +62,53 @@ def _types(turn):
     return {e["artifact"]["result_type"] for e in turn["evidence"] if e["artifact"]}
 
 
+def _artifacts(*turns):
+    return [e["artifact"] for t in turns for e in t["evidence"] if e["artifact"]]
+
+
+def answer_problems(turn, max_words, *earlier):
+    """Format policy (length, no headings/lists/raw fractions/closing offers) and numeric grounding."""
+    problems = format_problems(turn["reply"], max_words)
+    ungrounded = ungrounded_numbers(turn["reply"], _artifacts(*earlier, turn))
+    print(f"  words={len(turn['reply'].split())} limit={max_words} problems={problems} ungrounded={ungrounded}")
+    return problems + [f"ungrounded {ungrounded}"] * bool(ungrounded)
+
+
 def test_q1_and_follow_up(agent):
+    # Both turns run before any assertion, so a failed check on Q1 cannot skip the paid follow-up.
     thread = str(uuid.uuid4())
     t1 = _ask(agent, "Which airports in New England are strong candidates for terminal expansion?", thread)
-    assert "ranking" in _types(t1) and not t1["incomplete"]
-    rank = next(e for e in t1["evidence"] if e["artifact"] and e["artifact"]["result_type"] == "ranking")
-    assert rank["artifact"]["data"]["small_sample_airports"]  # warnings preserved on the real path
-
     t2 = _ask(agent, "Now rank only the medium and small hub airports from that list.", thread)
-    ranks = [e for e in t2["evidence"] if e["artifact"] and e["artifact"]["result_type"] == "ranking"]
-    assert ranks and ranks[-1]["artifact"]["data"]["candidate_group"]["hub_filter"]["hub_classes"] == ["M", "S"]
+    checks = {
+        "q1 tool": "ranking" in _types(t1) and not t1["incomplete"],
+        "q1 small-sample warning in evidence": any(a["result_type"] == "ranking" and a["data"]["small_sample_airports"]
+                                                   for a in _artifacts(t1)),
+        "q1 answer": not answer_problems(t1, MAX_WORDS),
+        "follow-up hub filter": [a["data"]["candidate_group"]["hub_filter"]["hub_classes"]
+                                 for a in _artifacts(t2) if a["result_type"] == "ranking"][-1:] == [["M", "S"]],
+        "follow-up answer": not answer_problems(t2, MAX_WORDS, t1),  # may cite Q1 evidence
+    }
+    assert all(checks.values()), checks
 
 
 def test_q2_lax_vs_santa_ana(agent):
     t = _ask(agent, "Compare LA and Santa Ana airport congestion levels.", str(uuid.uuid4()))
     comps = [e for e in t["evidence"] if e["artifact"] and e["artifact"]["result_type"] == "comparison"]
     assert comps and set(comps[-1]["artifact"]["data"]["airports"]) == {"LAX", "SNA"}
+    assert answer_problems(t, MAX_WORDS) == []
 
 
 def test_q3_anchorage_long_haul(agent):
     t = _ask(agent, "What is the percentage of long haul flights out of Anchorage airport?", str(uuid.uuid4()))
     lh = [e for e in t["evidence"] if e["artifact"] and e["artifact"]["result_type"] == "long_haul"]
     assert lh and lh[-1]["artifact"]["data"]["origin"] == "ANC"
+    assert answer_problems(t, ORDINARY_WORDS) == []
 
 
 def test_q4_sfo_unmet_demand(agent):
     t = _ask(agent, "What is the unmet flight demand in SFO airport and why?", str(uuid.uuid4()))
     prof = [e for e in t["evidence"] if e["artifact"] and e["artifact"]["result_type"] == "demand_profile"]
     assert prof and prof[-1]["artifact"]["data"]["unmet_demand"]["measured"] is False
+    assert answer_problems(t, MAX_WORDS) == []  # SFO vs its hub-class peers: a comparison
     print(f"\nTOTAL USAGE {USAGE}; est. cost at $2/$10 per MTok: "
           f"${USAGE['input'] * 2e-6 + USAGE['output'] * 1e-5:.3f}")

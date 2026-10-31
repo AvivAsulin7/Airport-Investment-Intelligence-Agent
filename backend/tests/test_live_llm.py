@@ -10,8 +10,9 @@ import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 
 from app.agent.agent import build_agent, build_chat_model, extract_turn
-from app.agent.smoke_tool import lookup_test_value
 from app.settings import get_settings
+
+from .smoke_tool import lookup_test_value
 
 settings = get_settings()
 pytestmark = [

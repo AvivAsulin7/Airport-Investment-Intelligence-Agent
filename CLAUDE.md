@@ -5,7 +5,7 @@ Project: **Airport Investment Intelligence Agent**, a 24-hour take-home assignme
 Key files:
 - `FDE Exam 2.pdf`: the original assignment. **Single source of truth for requirements.**
 - `requirements.md`: requirements analysis (explicit requirements, interpretations, open questions, acceptance checklist, risks).
-- `NOTES.md`: decision log (decisions made, open decisions, assumptions to verify, rejected alternatives).
+- `NOTES.md`: decision log (decisions made, open decisions, assumptions to verify, rejected alternatives). **Private:** gitignored and kept locally only, never committed. Public documents must not depend on it.
 - `implementation-plan.md`: phase roadmap (9 phases, statuses, and the 24-hour budget).
 - `data-sources-research.md`: verified public data sources (Phase 2).
 - `architecture.md`: design document required by the PDF (DRAFT until Phase 9).

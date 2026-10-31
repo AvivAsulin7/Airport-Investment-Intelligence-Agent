@@ -1,12 +1,14 @@
 """LangChain tools over the deterministic AnalyticsService (Phase 7, D-042, P-024).
 
 Each tool validates its arguments with a Pydantic schema, calls one service method, and returns
-(content, artifact): `content` is a compact JSON view for the model; `artifact` is the full
+(content, artifact): `content` is a compact JSON view for the model, with display-formatted values
+(percentages, minutes, scores /100); `artifact` is the full
 deterministic envelope (warnings, small_sample_airports, provenance, confidence, missing-data
 reasons) forwarded unchanged to the frontend (D-030). No formulas live here.
 """
 
 import json
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
 from langchain.tools import tool
@@ -38,8 +40,47 @@ def _round(obj, digits=4):
     return obj
 
 
+PCT_KEYS = {"share", "coverage", "relative", "t12m_vs_2019"}  # proportions whatever the metric
+NO_DISPLAY_KEYS = {"weights_used"}  # tool inputs the model may echo back; keep as numbers
+
+
+def _half_up(value: float, places: int = 1) -> str:
+    # Round once from the full value, half-up (Decimal avoids binary artefacts such as 32.45 -> 32.4).
+    return str(Decimal(repr(value)).quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP))
+
+
+def _display_number(value, key: str | None, metric: str | None):
+    unit = METRICS[metric].unit if metric in METRICS else None
+    on_metric = key in ("value", "raw") or (key is not None and key == metric)
+    if key in PCT_KEYS or (on_metric and unit == "ratio"):
+        return f"{_half_up(value * 100)}%"
+    if key == "absolute" and unit == "ratio":
+        return f"{_half_up(value * 100)} pp"
+    if key == "score":
+        return f"{_half_up(value)}/100"
+    if (on_metric or key == "absolute") and unit == "minutes":
+        return f"{_half_up(value)} min"
+    if float(value).is_integer():
+        return f"{int(value):,}" if abs(value) >= 1000 else int(value)
+    return _round(value)
+
+
+def _display(obj, key: str | None = None, metric: str | None = None):
+    """Model-facing display values: ratios as percentages, scores out of 100, minutes with units and
+    counts with thousands separators. Uses the registry units; the artifact keeps the raw numbers."""
+    if isinstance(obj, bool) or obj is None or isinstance(obj, str):
+        return obj
+    if isinstance(obj, (int, float)):
+        return _display_number(obj, key, metric)
+    if isinstance(obj, list):
+        return [_display(v, key, metric) for v in obj]
+    metric = obj.get("metric", metric) if isinstance(obj.get("metric"), str) else metric
+    return {k: _round(v) if k in NO_DISPLAY_KEYS else _display(v, k, k if k in METRICS else metric)
+            for k, v in obj.items()}
+
+
 def _content(envelope: dict, data_view: dict) -> str:
-    """Compact model-facing view built from the same envelope as the artifact."""
+    """Compact model-facing view built from the same envelope as the artifact, with display values."""
     view = {
         "result_type": envelope["result_type"],
         "data": data_view,
@@ -51,7 +92,7 @@ def _content(envelope: dict, data_view: dict) -> str:
             f"{p['source_type']}: {p['name']} ({p['observation_period']})" for p in envelope["provenance"]
         ],
     }
-    return json.dumps(_round(view), ensure_ascii=False)
+    return json.dumps(_display(view), ensure_ascii=False)
 
 
 # ------------------------------------------------------------------ schemas

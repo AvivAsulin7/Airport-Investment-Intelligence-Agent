@@ -65,6 +65,19 @@ def test_checksum_mismatch_is_detected(store):
         SnapshotStore.load(store.directory)
 
 
+def test_recorded_api_fallback_file_is_optional(store):
+    # Distributed snapshots exclude the recorded API copy; the manifest may still list it.
+    store.manifest["datasets"]["bts_api_fallback"] = {
+        "source_type": "recorded_api_fallback", "files": {"bts_api_fallback.json": {"rows": 1, "sha256": "x"}}}
+    (store.directory / "manifest.json").write_text(json.dumps(store.manifest))
+
+    SnapshotStore.load(store.directory)  # does not raise
+
+    (store.directory / "ontime_departures.csv").unlink()
+    with pytest.raises(SnapshotError):  # required datasets are still enforced
+        SnapshotStore.load(store.directory)
+
+
 def test_missing_manifest_is_reported(tmp_path):
     with pytest.raises(SnapshotError):
         SnapshotStore.load(tmp_path / "nope")

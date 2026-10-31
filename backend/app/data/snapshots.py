@@ -31,9 +31,13 @@ class SnapshotStore:
 
     def verify(self) -> None:
         for key, ds in self.manifest["datasets"].items():
+            # The recorded API copy is an optional outage fallback (not distributed in Git); skip it if absent.
+            optional = ds.get("source_type") == "recorded_api_fallback"
             for fname, meta in ds["files"].items():
                 f = self.directory / fname
                 if not f.is_file():
+                    if optional:
+                        continue
                     raise SnapshotError(f"{key}: missing file {fname}")
                 if hashlib.sha256(f.read_bytes()).hexdigest() != meta["sha256"]:
                     raise SnapshotError(f"{key}: checksum mismatch for {fname}")

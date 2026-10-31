@@ -1,0 +1,108 @@
+{
+  "built_at": "2026-10-30T13:02:15+00:00",
+  "target_month": "2026-07",
+  "datasets": {
+    "airports": {
+      "source_type": "public_dataset_snapshot",
+      "name": "FAA CY2025 Commercial Service Enplanements",
+      "url": "https://www.faa.gov/airports/planning_capacity/passenger_allcargo_stats/passenger/arp-cy2025-commercial-service-enplanements.xlsx",
+      "retrieval_method": "public file download (XLSX)",
+      "retrieved_at": "2026-10-30T12:49:58+00:00",
+      "observation_period": "CY2025 (prior column CY2024)",
+      "files": {
+        "airports_faa.csv": {
+          "rows": 519,
+          "sha256": "04c5961671135897250be3ab195f3998afb3a5f10d49003185c98718778b6d51"
+        }
+      },
+      "raw_files": {
+        "faa_cy2025_commercial_service_enplanements.xlsx": {
+          "bytes": 58419,
+          "sha256": "91c8d4457e9558b8bcb65c2a27cd9b95062e3c7b443e58e9714ba77942777b40"
+        }
+      },
+      "limitations": [
+        "Annual calendar-year enplanements; FAA region (RO) and state (ST) are used for regional filtering.",
+        "Locid is the FAA location identifier; for commercial airports it normally equals the IATA code used by BTS."
+      ],
+      "notes": [
+        "enplanements_current = CY2025, enplanements_prior = CY2024"
+      ]
+    },
+    "ontime": {
+      "source_type": "public_dataset_snapshot",
+      "name": "BTS Reporting Carrier On-Time Performance",
+      "url": "https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2026_7.zip",
+      "retrieval_method": "public file download (monthly ZIP)",
+      "retrieved_at": "2026-10-30T12:54:11+00:00",
+      "observation_period": "2026-07",
+      "files": {
+        "ontime_departures.csv": {
+          "rows": 352,
+          "sha256": "1595bb64313d55b5fc01f77a28c00ab69d81647f3cce5d5e4ebe8517d5eb5f85"
+        },
+        "ontime_arrival_causes.csv": {
+          "rows": 352,
+          "sha256": "50177e82cb9c6b22c83dd045b8064e956704a5ed61e5646cba503e2c25f56415"
+        }
+      },
+      "raw_files": {
+        "ontime_2026-07.zip": {
+          "bytes": 33075361,
+          "sha256": "61d657eb17f5b6f800ed2f05262a2223c5edf66fe7d9cfb3598c6664a34ed0b6"
+        }
+      },
+      "limitations": [
+        "Reporting (large US passenger) carriers only; cargo carriers and foreign carriers are not included.",
+        "Single month; delay and taxi-out levels are seasonal.",
+        "Delay causes are attached to delayed arrivals and are airline-reported attributions."
+      ],
+      "notes": []
+    },
+    "t100_segments": {
+      "source_type": "public_dataset_snapshot",
+      "name": "BTS T-100 Segment (All Carriers)",
+      "url": "https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FMG&QO_fu146_anzr=Nv4%20Pn44vr45",
+      "retrieval_method": "public TranStats download form (ASP.NET POST; not an API)",
+      "retrieved_at": "2026-10-30T12:54:30+00:00",
+      "observation_period": "2026-07",
+      "files": {
+        "t100_segments.csv": {
+          "rows": 21176,
+          "sha256": "6be2eed56b205eca64e546a6fe9a1f4423ee8575107447499ce79db5d514c60d"
+        }
+      },
+      "raw_files": {
+        "t100_segment_all_carriers_2026-07.zip": {
+          "bytes": 569046,
+          "sha256": "c9ef09287a70efff0e4d87b514163ae89a723616776f64757c4337cd418a4112"
+        }
+      },
+      "limitations": [
+        "Monthly route segments for all carriers (US and foreign) reporting T-100; aggregated over carriers.",
+        "DISTANCE is the published distance between airports in statute miles (A-016: matches great-circle statute miles within ~0.3% on 400 sampled routes).",
+        "Service classes: F scheduled passenger/cargo, G scheduled all-cargo, L non-scheduled passenger/cargo, P non-scheduled all-cargo.",
+        "Single month; route mix can be seasonal."
+      ],
+      "notes": []
+    },
+    "bts_api_fallback": {
+      "source_type": "recorded_api_fallback",
+      "name": "Recorded BTS SODA API response (r495-tyji)",
+      "url": "https://data.bts.gov/resource/r495-tyji.json",
+      "retrieval_method": "SODA JSON API, recorded for outage fallback only",
+      "retrieved_at": "2026-10-30T13:02:15+00:00",
+      "observation_period": "2024-08..2026-07",
+      "files": {
+        "bts_api_fallback.json": {
+          "rows": 9315,
+          "sha256": "b14260755c07b56d6cf4d9bf216e47d5f8783ce26f04c265da9745f620841e83"
+        }
+      },
+      "limitations": [
+        "Used only if the live API is unavailable; always labelled as recorded, never as live."
+      ],
+      "notes": []
+    }
+  }
+}

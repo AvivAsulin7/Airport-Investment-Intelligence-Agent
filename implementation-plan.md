@@ -7,7 +7,7 @@
 - A single-server review setup (D-034)
 - A live BTS API with labelled snapshots (D-016, D-017)
 
-The budget is the approved **24 h planning target with 3 h contingency** (D-031). Detailed design is in `architecture.md`, and the decisions are in `NOTES.md`.
+The budget is the approved **24 h planning target with 3 h contingency** (D-031). Detailed design is in `architecture.md`. Decisions are recorded in a private local journal (`NOTES.md`, gitignored since Phase 9).
 
 ## Ground rules
 - One phase at a time. **Each phase starts only after explicit user approval** (CLAUDE.md §2).
@@ -27,8 +27,8 @@ The budget is the approved **24 h planning target with 3 h contingency** (D-031)
 | 5 | Aviation Data Integration | **Approved** (P-038 to P-045; Sonnet default D-048) | 3.0 | 3.0 |
 | 6 | Deterministic Analytics Engine | **Approved** (P-046 to P-052, D-049) | 3.0 | 2.5 |
 | 7 | LangChain Agent & Conversation | **Approved** (P-053 to P-059) | 4.0 | 3.0 |
-| 8 | React Chat UI & End-to-End Integration | **Implemented, awaiting review.** UI + `EN \| עברית` toggle (D-050) + concise replies (D-051). 16 UI tests, lint and build pass; 122 backend tests. E2E single-server and Vite proxy verified. 1 paid call in total. Visual review pending (no browser tool). | 3.0 | 3.5 |
-| 9 | Testing, Documentation & Delivery | Pending | 3.0 | 2.5 |
+| 8 | React Chat UI & End-to-End Integration | **Approved.** UI + `EN \| עברית` toggle (D-050) + concise replies (D-051) + reply-language note (D-052). 17 UI tests. | 3.0 | 3.5 |
+| 9 | Testing, Documentation & Delivery | **In progress.** Audit done; final architecture.md and reviewer README with the M-1 to M-15 checklist done. The minimal processed snapshots (about 1 MB) are prepared for Git after a per-source rights check, verified from fresh clones without the builder, and awaiting the user's review before commit. Monthly refresh documented as a future improvement. Offline checks pass (backend 127, live 7, frontend 17, lint, build). Paid real-model validation run on 2026-10-31 (≈ $0.16): tool use, grounding and Hebrew passed. 3 replies (Q1, Q4, Florida) failed the length check, so the prompt was tightened. A Q1 + follow-up re-run passed (cumulative ≈ $0.22). After manual browser testing, the tool values were display-formatted and the answer format was made structural; this is verified offline only. Final submission checks done 2026-10-31. | 3.0 | 2.5 |
 | | **Contingency** | Reserved | 2.5 | **3.0** |
 | | **Total** | | 24.0 | **24.0** |
 

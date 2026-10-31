@@ -1,6 +1,7 @@
 """Phase 7 tool tests: schema validation, routing to the engine, artifact preservation (offline)."""
 
 import json
+import re
 
 import pytest
 from langchain_core.messages import ToolMessage
@@ -120,6 +121,44 @@ def test_model_view_keeps_counts_exact_and_rounds_only_fractions():
 
     assert _round({"departures": 189964.0, "pax": 26488605.0, "share": 0.042387, "big": 324434.567, "n": None}) == {
         "departures": 189964, "pax": 26488605, "share": 0.04239, "big": 324434.6, "n": None}
+
+
+def test_model_view_shows_rates_as_percentages_rounded_once_from_the_full_value():
+    from app.agent.tools import _display
+
+    view = _display({
+        "raw": {"load_factor": 0.8418, "departure_growth": 0.04262, "delay_rate": 0.3281, "avg_taxi_out_min": 32.45},
+        "values": {"cancellation_rate": {"JFK": {"metric": "cancellation_rate", "value": 0.1087,
+                                                 "numerator": 998, "denominator": 9185.0}}},
+        "delay_causes": [{"cause": "late_arriving_aircraft", "minutes": 109456.0, "share": 0.2604513926}],
+        "differences": {"delay_rate": {"BOS": {"absolute": -0.0301, "relative": -0.0903}},
+                        "avg_taxi_out_min": {"BOS": {"absolute": -10.03, "relative": -0.309}}},
+        "score": 76.25, "coverage": 0.7, "percentile": 86.21, "rank": 2, "passengers": 26488605.0,
+        "weights_used": {"load_factor": 0.25},
+    })
+
+    assert view["raw"] == {"load_factor": "84.2%", "departure_growth": "4.3%", "delay_rate": "32.8%",
+                           "avg_taxi_out_min": "32.5 min"}
+    assert view["values"]["cancellation_rate"]["JFK"] == {"metric": "cancellation_rate", "value": "10.9%",
+                                                          "numerator": 998, "denominator": "9,185"}
+    assert view["delay_causes"][0] == {"cause": "late_arriving_aircraft", "minutes": "109,456", "share": "26.0%"}
+    assert view["differences"]["delay_rate"]["BOS"] == {"absolute": "-3.0 pp", "relative": "-9.0%"}
+    assert view["differences"]["avg_taxi_out_min"]["BOS"]["absolute"] == "-10.0 min"
+    assert (view["score"], view["coverage"], view["percentile"], view["rank"]) == ("76.3/100", "70.0%", 86.21, 2)
+    assert view["passengers"] == "26,488,605" and view["weights_used"] == {"load_factor": 0.25}
+
+
+def test_model_content_has_no_raw_fractions_but_artifact_keeps_raw_values(real_engine):
+    tools = _tools(real_engine)
+    for name, args in [("rank_airports", {"region": "anything"}), ("compare_airports", {"airports": ["AAA", "BBB"]})]:
+        msg = _call(tools[name], args)
+        data = json.loads(msg.content)["data"]
+        data.pop("weights_used", None)  # tool inputs the model may echo back stay numeric
+        data = json.dumps(data)
+        assert not re.findall(r'(?<![\w.%"])0\.\d{2,}(?!\d*%)', data), name
+    rank = _call(tools["rank_airports"], {"region": "anything"})
+    assert isinstance(rank.artifact["data"]["airports"][0]["score"], float)  # evidence cards still get raw numbers
+    assert json.loads(rank.content)["data"]["airports"][0]["score"].endswith("/100")
 
 
 def test_ranking_lists_hub_class_per_candidate(real_engine):

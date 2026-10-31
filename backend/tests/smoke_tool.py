@@ -1,4 +1,4 @@
-"""A non-aviation test tool used only by Phase 4 smoke tests.
+"""A non-aviation test tool used only by the LangChain mechanics tests (moved from app/ in Phase 9).
 
 It exercises Pydantic input validation and the content_and_artifact path without
 touching any assignment scenario logic.
