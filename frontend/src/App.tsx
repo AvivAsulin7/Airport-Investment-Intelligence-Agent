@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { classifyError, getHealth, postChat, postDemo } from './api'
 import { Composer } from './components/Composer'
 import { Message, type Turn } from './components/Conversation'
+import { VoiceControls } from './components/VoiceControls'
 import { DICTS, LangContext, type Lang } from './i18n'
 import { EXAMPLE_IDS } from './notes'
-import type { HealthResponse } from './types'
+import type { ChatResponse, HealthResponse } from './types'
+import { browserVoiceDeps, VoiceController, type VoiceSnapshot } from './voice'
 
 let nextId = 0
 const uid = () => `t${++nextId}`
@@ -28,6 +30,10 @@ export default function App() {
   const [healthError, setHealthError] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const inFlight = useRef(false)
+  const sessionRef = useRef<string | null>(null) // read by voice turns, which outlive a render
+  const voiceDeps = useMemo(() => browserVoiceDeps(), [])
+  const voiceRef = useRef<VoiceController | null>(null)
+  const [voice, setVoice] = useState<VoiceSnapshot>({ state: 'idle', error: null, muted: false, transcript: '' })
 
   const t = DICTS[lang]
   const dir = lang === 'he' ? 'rtl' : 'ltr'
@@ -58,25 +64,52 @@ export default function App() {
     return () => clearInterval(timer)
   }, [pending])
 
-  const demoMode = health !== null && !health.llm_configured
+  // Voice: stop on unmount and when the interface language changes (recognition language follows it).
+  useEffect(() => () => voiceRef.current?.stop(), [])
+  useEffect(() => {
+    voiceRef.current?.stop()
+  }, [lang])
 
-  async function ask(text: string) {
-    if (inFlight.current) return // guard against double submission
+  const demoMode = health !== null && !health.llm_configured
+  const voiceActive = voice.state !== 'idle' && voice.state !== 'error'
+
+  async function ask(text: string): Promise<ChatResponse | null> {
+    if (inFlight.current) return null // guard against double submission
     inFlight.current = true
     setElapsed(0)
     setPending(true)
     setTurns((ts) => [...ts, { kind: 'user', id: uid(), text }])
     try {
-      const r = await postChat(text, sessionId)
+      const r = await postChat(text, sessionRef.current)
+      sessionRef.current = r.session_id
       setSessionId(r.session_id)
       setTurns((ts) => [...ts, { kind: 'assistant', id: uid(), response: r }])
+      return r
     } catch (err) {
       const info = classifyError(err)
       setTurns((ts) => [...ts, { kind: 'error', id: uid(), info, retryText: info.retryable ? text : null }])
+      return null
     } finally {
       inFlight.current = false
       setPending(false)
     }
+  }
+
+  function startVoice() {
+    voiceRef.current?.stop()
+    const controller = new VoiceController(voiceDeps, {
+      lang,
+      ask: async (text) => (await ask(text))?.reply_markdown ?? null, // same agent, session and evidence
+      onChange: setVoice,
+      muted: voice.muted,
+    })
+    voiceRef.current = controller
+    controller.start()
+  }
+
+  function toggleMute() {
+    if (voiceRef.current) voiceRef.current.setMuted(!voice.muted)
+    else setVoice((v) => ({ ...v, muted: !v.muted }))
   }
 
   async function runDemo(id: string, text: string) {
@@ -97,7 +130,9 @@ export default function App() {
   }
 
   function newConversation() {
+    voiceRef.current?.stop()
     setTurns([])
+    sessionRef.current = null
     setSessionId(null)
   }
 
@@ -161,7 +196,16 @@ export default function App() {
         </main>
 
         <footer className="composer-wrap">
-          <Composer disabled={pending || demoMode} placeholder={demoMode ? t.placeholderDemo : t.placeholder} onSend={ask} />
+          <Composer disabled={pending || demoMode || voiceActive} placeholder={demoMode ? t.placeholderDemo : t.placeholder} onSend={ask} />
+          <VoiceControls
+            voice={voice}
+            recognitionSupported={voiceDeps.createRecognition !== null}
+            synthesisSupported={voiceDeps.synth !== null}
+            disabled={pending || demoMode || !health?.llm_configured}
+            onStart={startVoice}
+            onStop={() => voiceRef.current?.stop()}
+            onToggleMute={toggleMute}
+          />
           {sessionId && <p className="session-hint">{t.sessionHint}</p>}
         </footer>
       </div>

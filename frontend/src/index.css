@@ -240,6 +240,18 @@ button, textarea { font: inherit; color: inherit; }
 }
 .session-hint { margin: 6px 0 0; font-size: 0.78rem; color: var(--ink-soft); }
 
+/* Voice conversation */
+.voice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; }
+.voice-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-soft); }
+.voice-listening .voice-status, .voice-speaking .voice-status { color: var(--airspace); font-weight: 600; }
+.voice-error .voice-status { color: var(--amber); }
+.voice-stop { border-color: var(--magenta); color: var(--magenta); }
+.voice-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--magenta); animation: voice-pulse 1.2s ease-in-out infinite; }
+.voice-transcript { flex-basis: 100%; font-style: italic; }
+.voice-note { flex-basis: 100%; margin: 0; font-size: 0.78rem; color: var(--ink-soft); }
+@keyframes voice-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .voice-dot { animation: none; } }
+
 @media (max-width: 640px) {
   :root { font-size: 14px; }
   .msg-assistant { padding: 12px; }

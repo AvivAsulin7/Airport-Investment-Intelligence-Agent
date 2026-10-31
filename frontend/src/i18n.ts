@@ -173,6 +173,30 @@ const en = {
   unmetHeading: 'Unmet demand: not measured',
   unmetStatement: null as string | null, // English shows the backend's own statement
 
+  voiceGroup: 'Voice conversation',
+  voiceStart: 'Start voice conversation',
+  voiceStop: 'Stop voice',
+  voiceMute: 'Mute answers',
+  voiceUnmute: 'Unmute answers',
+  voiceStates: {
+    idle: 'Voice off',
+    listening: 'Listening. Ask your question.',
+    processing: 'Analyzing your question…',
+    speaking: 'Reading the answer aloud…',
+    error: 'Voice stopped',
+  } as Record<string, string>,
+  voiceErrors: {
+    unsupported: 'This browser does not support speech recognition. Try Chrome, Edge or Safari, or type your question.',
+    permission: 'Microphone access is blocked. Allow it in the browser settings, then start again.',
+    network: 'The browser speech service could not be reached. Check your connection, then start again.',
+    'no-speech': 'No speech was heard, so voice mode paused. Press Start to try again.',
+    recognition: 'Speech recognition failed. Press Start to try again.',
+    request: 'The question could not be answered (see the message above). Press Start to continue.',
+    synthesis: 'The answer could not be read aloud. It is shown above. Press Start to continue.',
+  } as Record<string, string>,
+  voiceNoSynth: 'This browser cannot read answers aloud; they are shown as text only.',
+  voicePrivacy: 'Speech recognition is provided by your browser, which may send the audio to its online speech service.',
+
   metrics: {
     passenger_growth: 'Passenger growth',
     departure_growth: 'Flight growth',
@@ -349,6 +373,30 @@ const he: Dict = {
   unmetHeading: 'ביקוש שאינו נענה: לא נמדד',
   unmetStatement:
     'ביקוש טיסות שאינו נענה אינו נמדד: זהו ביקוש שלא התממש, ולכן אינו מופיע בנתוני תנועה או עיכובים. המדדים כאן תואמים (או סותרים) לחץ קיבולת אך אינם מוכיחים אותו. לעיכובים סיבות רבות (מזג אוויר, תפעול חברות, מערכת המרחב האווירי), שיעור התפוסה משקף החלטות קיבולת של חברות התעופה, וצמיחה עשויה להיות התאוששות ולא מחסור.',
+
+  voiceGroup: 'שיחה קולית',
+  voiceStart: 'התחלת שיחה קולית',
+  voiceStop: 'עצירת הקול',
+  voiceMute: 'השתקת התשובות',
+  voiceUnmute: 'ביטול השתקה',
+  voiceStates: {
+    idle: 'הקול כבוי',
+    listening: 'מאזין. שאלו את שאלתכם.',
+    processing: 'מנתח את השאלה…',
+    speaking: 'מקריא את התשובה…',
+    error: 'הקול נעצר',
+  },
+  voiceErrors: {
+    unsupported: 'הדפדפן אינו תומך בזיהוי דיבור. נסו את Chrome,‏ Edge או Safari, או הקלידו את השאלה.',
+    permission: 'הגישה למיקרופון חסומה. אפשרו אותה בהגדרות הדפדפן ואז התחילו שוב.',
+    network: 'אין גישה לשירות הדיבור של הדפדפן. בדקו את החיבור ואז התחילו שוב.',
+    'no-speech': 'לא נשמע דיבור, ולכן מצב הקול הושהה. לחצו על התחלה כדי לנסות שוב.',
+    recognition: 'זיהוי הדיבור נכשל. לחצו על התחלה כדי לנסות שוב.',
+    request: 'לא ניתן היה לענות על השאלה (ראו את ההודעה למעלה). לחצו על התחלה כדי להמשיך.',
+    synthesis: 'לא ניתן היה להקריא את התשובה. היא מוצגת למעלה. לחצו על התחלה כדי להמשיך.',
+  },
+  voiceNoSynth: 'הדפדפן אינו יכול להקריא תשובות; הן מוצגות כטקסט בלבד.',
+  voicePrivacy: 'זיהוי הדיבור מסופק על ידי הדפדפן, שעשוי לשלוח את ההקלטה לשירות הדיבור המקוון שלו.',
 
   metrics: {
     passenger_growth: 'צמיחת נוסעים',

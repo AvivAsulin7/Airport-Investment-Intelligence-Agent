@@ -171,6 +171,13 @@ These are evaluation scenarios, not hard-coded paths. The same tools answer anal
   - A note appears when the reply language differs from the interface language.
   - Switching language never resets the conversation.
 - **Demo mode:** without an API key, four preset buttons call `/api/demo/{q1..q4}`, which runs the same engine without an LLM. The mode is clearly labelled, and free-form chat is disabled.
+- **Voice mode (bonus, frontend only):** `voice.ts` is a framework-free state machine (idle → listening → processing → speaking → listening, plus error) around the browser's SpeechRecognition and SpeechSynthesis.
+  - **Same path as typed chat:** the transcript goes through the normal `ask()` → `/api/chat` path, with the same session and evidence rendering. There is no separate voice agent and no backend change.
+  - **No overlap:** the microphone is off while an answer plays, which avoids transcribing the agent's own voice. A run token discards late browser events after Stop or a failure.
+  - **No restart loops:** two silent windows, a permission error or a network error pause voice mode instead of restarting it.
+  - **What is spoken:** only the reply's prose, with Markdown and tables stripped, in sentence-sized chunks.
+  - **Language:** recognition follows the UI language; the playback voice follows the reply's script.
+  - **Browser processing:** the browser may process audio on its own online service.
 
 ## 10. Security and reliability
 - Secrets live only in a gitignored root `.env`. No key appears in the repository or its history.
@@ -199,7 +206,8 @@ These are evaluation scenarios, not hard-coded paths. The same tools answer anal
 **Deliberately not built:**
 - databases, Redis, RAG or vector stores;
 - custom LangGraph graphs or microservices;
-- voice, authentication or persistence of sessions;
+- authentication or persistence of sessions;
+- a separate voice agent or server-side speech services (voice mode is browser-only, see §9);
 - a generic calculator tool (deferred; follow-ups that need ad-hoc aggregation get "not available");
 - ranking-change summaries;
 - profitability or capacity modelling.
